@@ -21,8 +21,10 @@
             ]
         }
     ],
+  "build": {
     "env": {
-        "VITE_API_URL": "@api_url",
-        "VITE_PIPEDREAM_CONNECT_TOKEN": "@pipedream_connect_token"
+      "VITE_API_URL": "https://api.eqho.ai",
+      "VITE_PIPEDREAM_CONNECT_TOKEN": ""
     }
+  }
 }
