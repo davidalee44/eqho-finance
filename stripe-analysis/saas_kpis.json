@@ -1,0 +1,29 @@
+{
+  "timestamp": "2025-11-11T21:13:39.887114",
+  "total": {
+    "mrr": 55913.0,
+    "arr": 670956.0,
+    "customers": 85,
+    "active_subs": 85,
+    "arpu": 657.8,
+    "retention_rate": 85.0
+  },
+  "towpilot": {
+    "mrr": 47913.0,
+    "arr": 574956.0,
+    "customers": 74,
+    "active_subs": 74,
+    "arpu": 647.472972972973,
+    "pct_of_total_mrr": 85.69205730331049,
+    "retention_rate": 88.0952380952381
+  },
+  "other": {
+    "mrr": 8000.0,
+    "arr": 96000.0,
+    "customers": 11,
+    "active_subs": 11,
+    "arpu": 727.2727272727273,
+    "pct_of_total_mrr": 14.3079426966895,
+    "retention_rate": 68.75
+  }
+}

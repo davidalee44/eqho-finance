@@ -1,0 +1,345 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    /* Prevent horizontal scroll on mobile when dragging */
+    overflow-x: hidden;
+  }
+  
+  /* Remove spinner arrows from all number inputs */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+  
+  /* Clean Monospace Theme for Page 9 - Black, White, Blue, Gray */
+  .mono-theme {
+    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+    background: #ffffff;
+    color: #1a1a1a;
+  }
+  
+  .mono-theme .card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .mono-theme .card-header {
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .mono-theme h1,
+  .mono-theme h2,
+  .mono-theme h3,
+  .mono-theme h4,
+  .mono-theme .card-title {
+    color: #111827;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+  }
+  
+  .mono-theme p,
+  .mono-theme span,
+  .mono-theme td,
+  .mono-theme th,
+  .mono-theme label {
+    color: #374151;
+    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+  }
+  
+  .mono-theme .table {
+    border: 1px solid #e5e7eb;
+  }
+  
+  .mono-theme th {
+    background: #f3f4f6;
+    border-bottom: 2px solid #d1d5db;
+    color: #111827;
+    font-weight: 600;
+  }
+  
+  .mono-theme td {
+    border-bottom: 1px solid #e5e7eb;
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .mono-theme tr:hover {
+    background: #f9fafb;
+  }
+  
+  .mono-theme .font-mono,
+  .mono-theme code {
+    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+    background: #f3f4f6;
+    padding: 2px 4px;
+    border-radius: 2px;
+    color: #111827;
+  }
+  
+  .mono-theme .input,
+  .mono-theme input {
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    color: #111827;
+    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+  }
+  
+  .mono-theme .input:focus,
+  .mono-theme input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    outline: none;
+  }
+  
+  .mono-theme .badge {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+  }
+  
+  .mono-theme .separator {
+    background: #e5e7eb;
+  }
+  
+  .mono-theme .text-green-600,
+  .mono-theme .text-green-700,
+  .mono-theme .text-green-800,
+  .mono-theme .text-green-900 {
+    color: #059669 !important;
+  }
+  
+  .mono-theme .text-blue-600,
+  .mono-theme .text-blue-700,
+  .mono-theme .text-blue-800,
+  .mono-theme .text-blue-900 {
+    color: #2563eb !important;
+  }
+  
+  .mono-theme .text-orange-600,
+  .mono-theme .text-orange-700,
+  .mono-theme .text-orange-800,
+  .mono-theme .text-orange-900 {
+    color: #ea580c !important;
+  }
+  
+  .mono-theme .text-amber-600,
+  .mono-theme .text-amber-700,
+  .mono-theme .text-amber-800,
+  .mono-theme .text-amber-900 {
+    color: #d97706 !important;
+  }
+  
+  .mono-theme .bg-green-50,
+  .mono-theme .bg-green-100 {
+    background: #f0fdf4 !important;
+  }
+  
+  .mono-theme .bg-blue-50,
+  .mono-theme .bg-blue-100 {
+    background: #eff6ff !important;
+  }
+  
+  .mono-theme .bg-orange-50,
+  .mono-theme .bg-orange-100 {
+    background: #fff7ed !important;
+  }
+  
+  .mono-theme .bg-amber-50,
+  .mono-theme .bg-amber-100 {
+    background: #fffbeb !important;
+  }
+  
+  .mono-theme .border-green-200,
+  .mono-theme .border-green-300 {
+    border-color: #bbf7d0 !important;
+  }
+  
+  .mono-theme .border-blue-200,
+  .mono-theme .border-blue-300 {
+    border-color: #bfdbfe !important;
+  }
+  
+  .mono-theme .border-orange-200,
+  .mono-theme .border-orange-300 {
+    border-color: #fed7aa !important;
+  }
+  
+  .mono-theme .border-amber-200,
+  .mono-theme .border-amber-300 {
+    border-color: #fde68a !important;
+  }
+  
+  .mono-theme svg {
+    color: #4b5563;
+  }
+  
+  .mono-theme .accordion-trigger {
+    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+  }
+  
+  .mono-theme .tabs-trigger {
+    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+    border-color: #e5e7eb;
+    color: #6b7280;
+  }
+  
+  .mono-theme .tabs-trigger[data-state="active"] {
+    background: #ffffff;
+    border-color: #3b82f6;
+    color: #2563eb;
+    border-bottom-color: #ffffff;
+  }
+}
+
+/* Draggable Card Styles */
+.edit-mode [class*="rounded"] [class*="border"]:not(button):not(input):not(select) {
+  position: relative;
+}
+
+.draggable-card {
+  position: relative !important;
+  touch-action: none;
+  user-select: none;
+  /* Smooth transitions for repositioning */
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, opacity 0.2s ease;
+  /* Prevent card from going outside viewport */
+  max-width: 100%;
+}
+
+.edit-mode .draggable-card {
+  cursor: move;
+}
+
+.edit-mode .draggable-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  border-color: hsl(var(--primary)) !important;
+  z-index: 10;
+  /* Slightly lift on hover */
+  transform: translateY(-2px) scale(1.01);
+}
+
+.edit-mode .draggable-card:active,
+.edit-mode .draggable-card.dragging {
+  cursor: grabbing;
+  opacity: 0.9;
+  z-index: 100;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  /* Disable transition while dragging for immediate feedback */
+  transition: box-shadow 0.2s ease, opacity 0.2s ease !important;
+}
+
+/* Resize handle indicator */
+.edit-mode .draggable-card::after {
+  content: "⋮⋮";
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  font-size: 12px;
+  color: hsl(var(--primary));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  line-height: 0.8;
+  z-index: 10;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+}
+
+.edit-mode .draggable-card:hover::after {
+  opacity: 0.8;
+}
+
+/* Drag handle indicator (top right) */
+.edit-mode .draggable-card::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="hsl(220, 14%, 30%)" stroke-width="2"><circle cx="9" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>') center/contain no-repeat;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.2s ease;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.edit-mode .draggable-card:hover::before {
+  opacity: 0.6;
+  transform: scale(1.1);
+}
+
+/* Resizing indicator */
+.draggable-card.resizing {
+  border: 2px dashed hsl(var(--primary)) !important;
+  transition: none !important;
+}
+
+/* Smooth animation for cards moving out of the way */
+.draggable-card:not(.dragging):not(.resizing) {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .edit-mode .draggable-card {
+    /* Easier touch targets on mobile */
+    min-height: 100px;
+  }
+  
+  .edit-mode .draggable-card::before {
+    /* Larger grip icon for mobile */
+    width: 32px;
+    height: 32px;
+    top: 8px;
+    right: 8px;
+    opacity: 0.4 !important;
+  }
+  
+  .edit-mode .draggable-card::after {
+    /* Larger resize indicator for mobile */
+    font-size: 16px;
+    opacity: 0.4 !important;
+    bottom: 4px;
+    right: 4px;
+  }
+}
+

@@ -1,0 +1,36 @@
+.
+|-- CONTRIBUTING.md
+|-- Makefile
+|-- PROJECT_SUMMARY.md
+|-- README.md
+|-- SETUP.md
+|-- backend
+|   |-- Dockerfile
+|   |-- README.md
+|   |-- app
+|   |   |-- __init__.py
+|   |   |-- api
+|   |   |-- core
+|   |   |-- main.py
+|   |   |-- models
+|   |   |-- schemas
+|   |   `-- services
+|   |-- requirements.txt
+|   `-- tests
+|-- index.html
+|-- package-lock.json
+|-- package.json
+|-- postcss.config.js
+|-- project_tree.txt
+|-- src
+|   |-- App.jsx
+|   |-- components
+|   |   `-- ui
+|   |-- index.css
+|   |-- lib
+|   |   `-- utils.ts
+|   `-- main.jsx
+|-- tailwind.config.js
+`-- vite.config.js
+
+13 directories, 21 files

@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongodb/mongodb-community-server:8.0-ubuntu2204
+    container_name: eqho-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGODB_INITDB_ROOT_USERNAME=admin
+      - MONGODB_INITDB_ROOT_PASSWORD=eqho_secure_password_change_me
+      - MONGODB_INITDB_DATABASE=eqho_metrics
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - eqho-network
+
+  backend:
+    build: ./backend
+    container_name: eqho-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+      - MONGODB_URL=mongodb://admin:eqho_secure_password_change_me@mongodb:27017/eqho_metrics?authSource=admin
+      - CACHE_TTL=300
+    depends_on:
+      - mongodb
+    networks:
+      - eqho-network
+    volumes:
+      - ./backend:/app
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+
+networks:
+  eqho-network:
+    driver: bridge
+

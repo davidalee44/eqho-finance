@@ -1,0 +1,12 @@
+# Vercel ignore file
+backend/
+node_modules/
+.git/
+.github/
+*.md
+!README.md
+.vscode/
+.idea/
+*.log
+.DS_Store
+
