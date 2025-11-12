@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import { supabase } from './lib/supabaseClient'
-import App from './App.jsx'
+import { AppRouter } from './components/AppRouter'
 import './index.css'
 
 function AuthWrapper() {
@@ -135,7 +135,7 @@ function AuthWrapper() {
     )
   }
 
-  return <App />
+  return <AppRouter />
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
