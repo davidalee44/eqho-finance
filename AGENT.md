@@ -1,5 +1,107 @@
 # Agent Guidelines & Reminders
 
+## Documentation Standards
+
+### Code Documentation Philosophy
+
+**Write documentation like a professional developer leaving clear notes for the team.**
+
+#### Core Principles
+
+1. **Professional Tone**: Document objectively, factually, and clearly
+2. **Developer-First**: Write for engineers who will maintain this code
+3. **Long-Term Thinking**: Assume this code will be in production for years
+4. **No Patronizing Language**: Never use phrases like "you're all set!", "congratulations!", or treat the reader like they need hand-holding
+5. **Developer Humor is OK**: Dry wit and technical humor are fine, but stay professional
+
+#### What to Include
+
+- **Purpose**: Why this code exists
+- **Architecture**: How components fit together
+- **Usage**: Clear examples of how to use the code
+- **Gotchas**: Edge cases, performance considerations, security notes
+- **Dependencies**: What this code relies on
+- **Testing**: How to test the functionality
+
+#### What to Avoid
+
+- ❌ Congratulatory language ("You did it!", "Success!")
+- ❌ Marketing speak ("Amazing feature!", "Revolutionary!")
+- ❌ Patronizing tone ("Don't worry", "It's easy!")
+- ❌ Excessive emojis (one or two for visual hierarchy is fine)
+- ❌ Acting like you did the reader a favor
+- ❌ Documenting the obvious
+
+#### Good Examples
+
+```markdown
+# Version Control System
+
+## Overview
+
+Provides snapshot-based version control for financial reports using PostgreSQL 
+and Supabase Storage. Snapshots include complete report state, metadata, and 
+optional screenshots.
+
+## Architecture
+
+- `snapshot_service.py`: CRUD operations, validates user access
+- `snapshots.py`: REST API endpoints with Pydantic validation
+- PostgreSQL table with Row Level Security for user isolation
+```
+
+#### Bad Examples
+
+```markdown
+# 🎉 Version Control System - You're Going to Love This!
+
+## What You Get
+
+You now have an AMAZING version control system that will blow your mind! 
+We've built something truly special here. Let me tell you all about it...
+
+Congratulations on getting this far! You're all set! 🎊
+```
+
+#### README Structure
+
+For implementation documentation:
+
+1. **What This Is**: Brief, factual description
+2. **Architecture**: Components and how they interact
+3. **Setup**: Required steps to deploy
+4. **Usage**: Code examples
+5. **API Reference**: Endpoints, parameters, responses
+6. **Security**: Authentication, authorization, data protection
+7. **Testing**: How to verify functionality
+8. **Troubleshooting**: Common issues and solutions
+
+#### Comments in Code
+
+```python
+# Good: Explains why, not what
+def calculate_mrr(subscriptions):
+    # Filter out subscriptions in grace period - they're still counted as active
+    # but shouldn't contribute to MRR until grace period ends
+    active_subs = [s for s in subscriptions if not s.get('in_grace_period')]
+    
+    return sum(s['amount'] for s in active_subs)
+```
+
+```python
+# Bad: States the obvious or over-explains
+def calculate_mrr(subscriptions):
+    # This function calculates MRR! It's super important!
+    # First, we create an empty list to store our subscriptions
+    active_subs = []
+    # Then we loop through each subscription (isn't that cool?)
+    for s in subscriptions:
+        # We check if it's active (wow!)
+        if s.get('status') == 'active':
+            # And add it to our list! Amazing!
+            active_subs.append(s)
+```
+
 ## Stripe MCP Pagination Limits
 
 ### ⚠️ CRITICAL: Stripe MCP Pagination

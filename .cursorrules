@@ -1,0 +1,233 @@
+# Cursor Rules for Eqho Due Diligence
+
+## Documentation Standards
+
+### Tone and Style
+- Write as a professional developer documenting code for the team
+- Be factual, clear, and objective
+- Developer humor is acceptable, but stay professional
+- No congratulatory, patronizing, or marketing language
+- Document for long-term maintenance (assume 2+ years in production)
+
+### What to Document
+- Architecture and design decisions
+- Non-obvious implementation details
+- Security considerations
+- Performance implications
+- Integration points and dependencies
+- Testing approach
+- Common pitfalls and gotchas
+
+### What NOT to Do
+- ❌ Use phrases like: "You're all set!", "Congratulations!", "Amazing!", "Revolutionary!"
+- ❌ Excessive emojis (one or two for visual hierarchy is fine in headings)
+- ❌ Treat documentation like a tutorial for beginners
+- ❌ Document obvious code behavior
+- ❌ Write in first person about "building" or "delivering" features
+
+### Code Comments
+```python
+# Good: Explains non-obvious behavior
+# Stripe webhooks retry up to 3 times with exponential backoff
+# If we return 200 before processing completes, we might get duplicates
+webhook_handler.process_sync()
+
+# Bad: States the obvious
+# This function adds two numbers together
+def add(a, b):
+    return a + b
+```
+
+### README Structure
+1. What: Brief description of what this is
+2. Why: Problem it solves, context
+3. Architecture: How components interact
+4. Setup: Installation/deployment steps
+5. Usage: Code examples
+6. API: Endpoints, parameters, responses (if applicable)
+7. Security: Auth, permissions, data protection
+8. Testing: How to run tests, what's covered
+9. Troubleshooting: Common issues
+
+### Commit Messages
+Follow conventional commits:
+- `feat: add snapshot restore functionality`
+- `fix: resolve race condition in cache service`
+- `docs: update API reference for v2 endpoints`
+- `refactor: extract payment processing logic`
+- `test: add integration tests for webhooks`
+
+## Project-Specific Rules
+
+### Stack Preferences
+- Backend: Python 3.9+, FastAPI, Pydantic
+- Frontend: React 18+, Tailwind CSS, shadcn/ui components
+- Database: Supabase (PostgreSQL + Storage)
+- Package management: npm for frontend, uv for Python
+
+### Security
+- Always use Row Level Security (RLS) for Supabase tables
+- Validate user_id on all API endpoints
+- Never log sensitive data (API keys, tokens, PII)
+- Use environment variables for all secrets
+
+### Error Handling
+- Use try/except in Python, but be specific about exceptions
+- Return meaningful error messages to API consumers
+- Log errors with context for debugging
+- Don't expose internal implementation details in error messages
+
+### API Design
+- RESTful conventions: GET (read), POST (create), PATCH (update), DELETE (delete)
+- Use Pydantic models for request/response validation
+- Include proper HTTP status codes
+- Version APIs when making breaking changes
+
+### Testing
+- Write tests for business logic
+- Mock external services (Stripe, Supabase) in unit tests
+- Integration tests should hit real endpoints but use test data
+- Don't commit test API keys or credentials
+
+### Performance
+- Use database indexes for frequently queried columns
+- Cache expensive calculations
+- Paginate large result sets
+- Optimize frontend bundle size (code splitting, tree shaking)
+
+### Code Organization
+```
+backend/
+  app/
+    api/v1/          # API endpoints
+    services/        # Business logic
+    models/          # Database models
+    core/            # Config, utilities
+  migrations/        # Database migrations
+  tests/             # Test files
+
+src/
+  components/        # React components
+  lib/               # Utilities, API clients
+  hooks/             # Custom React hooks
+```
+
+### Dependencies
+- Keep dependencies up to date (monthly review)
+- Pin major versions, allow minor updates
+- Document why each major dependency exists
+- Remove unused dependencies
+
+## Common Patterns
+
+### Supabase Queries
+```python
+# Always check if client exists
+if not cls.client:
+    cls.connect()
+
+if not cls.client:
+    return []  # or raise exception
+
+# Use RLS-aware queries
+response = (
+    cls.client
+    .table("snapshots")
+    .select("*")
+    .eq("user_id", user_id)  # RLS enforces this
+    .execute()
+)
+```
+
+### React Component Structure
+```jsx
+// 1. Imports (grouped: React, third-party, local)
+import React, { useState, useEffect } from 'react';
+import { Card } from './ui/card';
+import { apiFetch } from '@/lib/api';
+
+// 2. Component
+export const MyComponent = ({ prop1, prop2 }) => {
+  // 3. Hooks (state, effects, custom hooks)
+  const [data, setData] = useState(null);
+  
+  // 4. Event handlers
+  const handleClick = () => {
+    // ...
+  };
+  
+  // 5. Render
+  return (
+    <div>...</div>
+  );
+};
+```
+
+### Error Handling Pattern
+```python
+try:
+    result = dangerous_operation()
+    logger.info(f"Operation succeeded: {result.id}")
+    return result
+except SpecificException as e:
+    logger.error(f"Operation failed: {e}", exc_info=True)
+    raise HTTPException(
+        status_code=500,
+        detail="Failed to complete operation"
+    )
+```
+
+## Git Workflow
+
+- Feature branches: `feature/add-export-functionality`
+- Bug fixes: `fix/resolve-cache-race-condition`
+- Hotfixes: `hotfix/security-patch-rls`
+- Always rebase before merging
+- Squash commits when merging to main
+- Delete branches after merging
+
+## Environment Setup
+
+### Required Environment Variables
+```bash
+# Backend
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+STRIPE_API_KEY=
+CORS_ORIGINS=
+
+# Frontend
+VITE_API_URL=
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+```
+
+### Development Commands
+```bash
+# Backend
+cd backend && python -m uvicorn app.main:app --reload
+
+# Frontend
+npm run dev
+
+# Build
+npm run build
+
+# Test
+pytest                    # Backend
+npm test                  # Frontend
+```
+
+## When in Doubt
+
+- **Security**: Deny by default, enable explicitly
+- **Performance**: Measure before optimizing
+- **Documentation**: If you're explaining it in a PR, document it in code
+- **Testing**: If it can break, test it
+- **Dependencies**: Fewer is better
+- **Code**: Simple is better than clever
+
+---
+
+Remember: Write code and documentation for the engineer who will maintain this at 2am when something breaks. That engineer might be you.
+

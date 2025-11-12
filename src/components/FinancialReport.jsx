@@ -1,27 +1,37 @@
+import { prepareReportDataForExport } from '@/lib/exportUtils';
+import {
+  AlertCircle,
+  AlertTriangle,
+  Calendar,
+  Cloud,
+  DollarSign,
+  Megaphone,
+  TrendingDown,
+  TrendingUp,
+  Users
+} from 'lucide-react';
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { ReportActions } from './ReportActions';
+import { VersionControl } from './VersionControl';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Badge } from './ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Progress } from './ui/progress';
 import { Separator } from './ui/separator';
-import { 
-  TrendingDown, 
-  TrendingUp, 
-  AlertTriangle, 
-  DollarSign, 
-  Users, 
-  Cloud, 
-  Megaphone,
-  LineChart,
-  Calendar,
-  AlertCircle
-} from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 const FinancialReport = () => {
   // Investment parameters
   const [capitalRaise, setCapitalRaise] = React.useState(400000);
   const [showWithInvestment, setShowWithInvestment] = React.useState(true);
+  
+  // Refs for export and screenshot
+  const reportRef = React.useRef(null);
+  
+  // User ID for version control (in production, get from auth)
+  const userId = 'demo-user';
   
   // Key metrics from P&L
   const metrics = {
@@ -185,8 +195,63 @@ const FinancialReport = () => {
     }
   };
 
+  // Prepare data for export
+  const exportData = prepareReportDataForExport(
+    metrics,
+    cashFlowForecast,
+    spendingCategories,
+    risks,
+    recommendations,
+    recentTransactions
+  );
+
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
+      {/* Export & Version Control Actions */}
+      <Card className="border-2 border-blue-200 bg-blue-50/50">
+        <CardHeader>
+          <CardTitle className="text-base">Report Actions & Version Control</CardTitle>
+          <CardDescription>
+            Export your report, take screenshots, or save versions to track changes over time
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="actions">
+              <AccordionTrigger>Export & Screenshot Options</AccordionTrigger>
+              <AccordionContent>
+                <ReportActions
+                  reportRef={reportRef}
+                  reportData={exportData}
+                  userId={userId}
+                  onSaveComplete={(data) => {
+                    console.log('Report saved:', data);
+                  }}
+                />
+              </AccordionContent>
+            </AccordionItem>
+            
+            <AccordionItem value="version-control">
+              <AccordionTrigger>Version History & Snapshots</AccordionTrigger>
+              <AccordionContent>
+                <VersionControl
+                  currentData={exportData}
+                  userId={userId}
+                  snapshotType="financial_report"
+                  onRestore={(data) => {
+                    console.log('Restoring snapshot:', data);
+                    // In a full implementation, you would update the component state here
+                    alert('Snapshot restore feature - data logged to console');
+                  }}
+                />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </CardContent>
+      </Card>
+
+      {/* Main Report Content - wrapped with ref for screenshot */}
+      <div ref={reportRef}>
       {/* Header */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -1067,6 +1132,8 @@ const FinancialReport = () => {
           )}
         </CardContent>
       </Card>
+      </div>
+      {/* End of report ref wrapper */}
     </div>
   );
 };
