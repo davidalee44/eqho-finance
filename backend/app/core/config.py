@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # Cache Configuration
     CACHE_TTL: int = 300  # 5 minutes default
 
+    # Resend Email API
+    RESEND_API_KEY: str = ""
+
     # Pipedream Configuration
     PIPEDREAM_CONNECT_TOKEN: str = ""
     PIPEDREAM_PROJECT_ID: str = ""
