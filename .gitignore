@@ -61,3 +61,4 @@ backend/.pytest_cache/
 backend/.env
 registry/
 .vercel
+client_secret_*.json

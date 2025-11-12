@@ -6,4 +6,5 @@ pydantic-settings==2.1.0
 python-dotenv==1.0.0
 httpx==0.25.2
 supabase==2.3.4
+requests==2.31.0
 

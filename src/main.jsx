@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react'
-import ReactDOM from 'react-dom/client'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
-import { supabase } from './lib/supabaseClient'
+import React, { useEffect, useState } from 'react'
+import ReactDOM from 'react-dom/client'
 import { AppRouter } from './components/AppRouter'
 import './index.css'
+import { supabase } from './lib/supabaseClient'
 
 function AuthWrapper() {
   const [session, setSession] = useState(null)
