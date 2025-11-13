@@ -47,12 +47,9 @@ function AuthWrapper() {
                   🔒 CONFIDENTIAL
                 </p>
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className="text-2xl font-bold text-white">
                 Eqho Investor Portal
               </h2>
-              <p className="text-cyan-300 text-sm">
-                $500K Seed Round | TowPilot Product
-              </p>
             </div>
 
             {/* Auth Component */}
