@@ -237,7 +237,7 @@ export const PixelRocketHero = ({ children }) => {
     }
   }, [textControls, buttonControls]);
 
-  const headline = "To the Moon!";
+  const headline = "TotheMoon!";
   
   return (
     <div className="relative flex h-screen w-full flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-indigo-900 via-purple-900 to-black">
