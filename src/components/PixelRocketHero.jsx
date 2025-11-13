@@ -17,7 +17,10 @@ const PixelVoyagerCanvas = () => {
     camera.position.z = 25;
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    
+    // Reduce pixel ratio on mobile for better performance
+    const isMobile = window.innerWidth < 768;
+    renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2));
     mountRef.current.appendChild(renderer.domElement);
 
     const mouse = new THREE.Vector2(0, 0);
@@ -36,9 +39,12 @@ const PixelVoyagerCanvas = () => {
     composer.addPass(bloomPass);
 
     // --- Starfield ---
+    // Reduce star count on mobile for better performance
+    const isMobile = window.innerWidth < 768;
+    const starCount = isMobile ? 500 : 1500;
     const starGeometry = new THREE.BufferGeometry();
     const starVertices = [];
-    for (let i = 0; i < 1500; i++) {
+    for (let i = 0; i < starCount; i++) {
         const x = (Math.random() - 0.5) * 100;
         const y = (Math.random() - 0.5) * 100;
         const z = (Math.random() - 0.5) * 100;
@@ -170,19 +176,22 @@ const HeroNav = () => {
         <motion.nav 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1, transition: { delay: 1, duration: 1 } }}
-            className="absolute top-0 left-0 right-0 z-20 p-8"
+            className="absolute top-0 left-0 right-0 z-20 p-4 sm:p-6 md:p-8"
         >
-            <div className="flex items-center gap-4">
-                <span className="text-4xl">🚀</span>
-                <span 
-                  className="text-2xl font-bold text-white" 
+            <div className="flex items-center gap-2 sm:gap-4">
+                <span className="text-2xl sm:text-3xl md:text-4xl">🚀</span>
+                <a 
+                  href="https://eqho.ai"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm sm:text-xl md:text-2xl font-bold text-white hover:text-cyan-300 transition-colors" 
                   style={{ 
                     fontFamily: "'Press Start 2P', system-ui",
                     letterSpacing: '0.1em'
                   }}
                 >
-                  TotheMoon
-                </span>
+                  eqho.ai
+                </a>
             </div>
         </motion.nav>
     );
@@ -229,10 +238,10 @@ export const PixelRocketHero = ({ children }) => {
       <HeroNav />
       
       {/* Main content */}
-      <div className="relative z-10 text-center px-4 max-w-6xl mx-auto">
+      <div className="relative z-10 text-center px-4 sm:px-6 max-w-6xl mx-auto">
         <h1 
-          className="text-4xl font-bold tracking-tighter text-white md:text-6xl mb-6" 
-          style={{ fontFamily: "'Press Start 2P', system-ui", textShadow: '4px 4px 0px #ff00ff, -2px -2px 0px #00ffff' }}
+          className="text-2xl font-bold tracking-tighter text-white sm:text-4xl md:text-5xl lg:text-6xl mb-4 sm:mb-6" 
+          style={{ fontFamily: "'Press Start 2P', system-ui", textShadow: '2px 2px 0px #ff00ff, -1px -1px 0px #00ffff' }}
         >
             {headline.split("").map((char, i) => (
                 <motion.span 
@@ -251,7 +260,7 @@ export const PixelRocketHero = ({ children }) => {
           custom={headline.length}
           initial={{ opacity: 0, y: 30 }}
           animate={textControls}
-          className="mx-auto max-w-xl text-sm leading-relaxed text-cyan-300 mb-12"
+          className="mx-auto max-w-xl text-xs sm:text-sm leading-relaxed text-cyan-300 mb-8 sm:mb-12"
           style={{ fontFamily: "'Press Start 2P', system-ui" }}
         >
           Eqho Investor Portal

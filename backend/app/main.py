@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import cache, emails, metrics, snapshots, stripe_data
+from app.api.v1 import audit, cache, emails, layouts, metrics, snapshots, stripe_data
 from app.core.config import settings
 from app.services.supabase_service import SupabaseService
 
@@ -33,6 +33,8 @@ app.include_router(stripe_data.router, prefix="/api/v1/stripe", tags=["stripe"])
 app.include_router(cache.router, prefix="/api/v1/cache", tags=["cache"])
 app.include_router(snapshots.router, prefix="/api/v1/snapshots", tags=["snapshots"])
 app.include_router(emails.router, prefix="/api/v1/emails", tags=["emails"])
+app.include_router(layouts.router, prefix="/api/v1", tags=["layouts"])
+app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
 
 
 @app.get("/")

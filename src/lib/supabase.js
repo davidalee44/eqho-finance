@@ -24,3 +24,45 @@ export async function getRevenueAnalytics() {
   return data
 }
 
+/**
+ * Get current user's role from metadata
+ * @returns {Promise<string|null>} User role or null
+ */
+export async function getUserRole() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return null
+    }
+    
+    return user.user_metadata?.role || null
+  } catch (error) {
+    console.error('Error fetching user role:', error)
+    return null
+  }
+}
+
+/**
+ * Check if current user is an admin
+ * @returns {Promise<boolean>} True if user is admin or super_admin
+ */
+export async function isAdmin() {
+  const role = await getUserRole()
+  return role === 'admin' || role === 'super_admin'
+}
+
+/**
+ * Get current user ID
+ * @returns {Promise<string|null>} User ID or null
+ */
+export async function getCurrentUserId() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    return user?.id || null
+  } catch (error) {
+    console.error('Error fetching user ID:', error)
+    return null
+  }
+}
+

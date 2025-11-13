@@ -206,7 +206,7 @@ const FinancialReport = () => {
   );
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
+    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Export & Version Control Actions */}
       <Card className="border-2 border-blue-200 bg-blue-50/50">
         <CardHeader>
@@ -278,7 +278,7 @@ const FinancialReport = () => {
       <Separator />
 
       {/* Executive Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -345,7 +345,7 @@ const FinancialReport = () => {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="spending">Spending</TabsTrigger>
           <TabsTrigger value="forecast">Forecast</TabsTrigger>
@@ -388,7 +388,7 @@ const FinancialReport = () => {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
             {/* P&L Summary */}
             <Card>
               <CardHeader>
@@ -537,7 +537,7 @@ const FinancialReport = () => {
               <CardTitle>Recent Large Transactions</CardTitle>
               <CardDescription>Top 10 expenses from recent activity</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -588,7 +588,7 @@ const FinancialReport = () => {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <Card>
               <CardHeader>
                 <CardTitle>Spending Patterns</CardTitle>
@@ -680,7 +680,7 @@ const FinancialReport = () => {
                   : 'Current trajectory without investment (status quo)'}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -744,7 +744,7 @@ const FinancialReport = () => {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <Card>
               <CardHeader>
                 <CardTitle>Key Assumptions</CardTitle>
@@ -860,7 +860,7 @@ const FinancialReport = () => {
               <CardDescription>Monitor these metrics weekly</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Critical Thresholds:</p>
                   <ul className="space-y-1 text-sm text-muted-foreground">
@@ -972,7 +972,7 @@ const FinancialReport = () => {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <Card>
               <CardHeader>
                 <CardTitle>Target Ratios</CardTitle>
@@ -1050,7 +1050,7 @@ const FinancialReport = () => {
               <CardDescription>Track these KPIs weekly to measure improvement</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 text-sm">
                 <div>
                   <p className="font-medium mb-1">Weekly Cash Burn</p>
                   <p className="text-xs text-muted-foreground">Target: Reduce to &lt;$20K/week</p>

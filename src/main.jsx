@@ -4,8 +4,10 @@ import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import { AppRouter } from './components/AppRouter'
 import PixelRocketHero from './components/PixelRocketHero'
+import { AuthProvider } from './contexts/AuthContext'
 import './index.css'
 import { supabase } from './lib/supabaseClient'
+import { logAction, ACTION_TYPES } from './services/auditService'
 
 function AuthWrapper() {
   const [session, setSession] = useState(null)
@@ -19,9 +21,29 @@ function AuthWrapper() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session)
       setLoading(false)
+      
+      // Log auth events for audit trail
+      if (event === 'SIGNED_IN' && session) {
+        try {
+          await logAction(ACTION_TYPES.LOGIN, {
+            method: 'supabase_auth',
+            timestamp: new Date().toISOString(),
+          })
+        } catch (error) {
+          console.error('Failed to log signin:', error)
+        }
+      } else if (event === 'SIGNED_OUT') {
+        try {
+          await logAction(ACTION_TYPES.LOGOUT, {
+            timestamp: new Date().toISOString(),
+          })
+        } catch (error) {
+          console.error('Failed to log signout:', error)
+        }
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -83,6 +105,11 @@ function AuthWrapper() {
                     background: 'rgba(239, 68, 68, 0.1)',
                     padding: '8px',
                     borderRadius: '0.5rem',
+                    marginBottom: '12px',
+                  },
+                  divider: {
+                    background: 'rgba(156, 163, 175, 0.3)',
+                    margin: '20px 0',
                   },
                 },
                 variables: {
@@ -102,21 +129,27 @@ function AuthWrapper() {
               socialLayout="vertical"
               view="sign_in"
               showLinks={true}
+              magicLink={false}
               localization={{
                 variables: {
                   sign_in: {
                     email_label: 'Email Address',
                     password_label: 'Password',
-                    button_label: '🚀 Launch Mission',
-                    social_provider_text: 'Sign in with {{provider}}',
-                    link_text: "New to Eqho? Create Account",
+                    button_label: 'Sign In',
+                    social_provider_text: 'Continue with {{provider}}',
+                    link_text: "Don't have an account? Sign up",
+                    email_input_placeholder: 'Your email',
+                    password_input_placeholder: 'Your password',
                   },
                   sign_up: {
                     email_label: 'Email Address',
                     password_label: 'Create Password',
-                    button_label: '🚀 Create Eqho Account',
-                    social_provider_text: 'Sign in with {{provider}}',
-                    link_text: 'Already have clearance? Sign in',
+                    button_label: 'Create Account',
+                    social_provider_text: 'Sign up with {{provider}}',
+                    link_text: 'Already have an account? Sign in',
+                    email_input_placeholder: 'Your email',
+                    password_input_placeholder: 'Create a strong password',
+                    confirmation_text: 'Check your email for confirmation link',
                   },
                 },
               }}
@@ -142,7 +175,9 @@ function AuthWrapper() {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AuthWrapper />
+    <AuthProvider>
+      <AuthWrapper />
+    </AuthProvider>
   </React.StrictMode>,
 )
 

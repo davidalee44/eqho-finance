@@ -16,10 +16,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ValidatedMetrics } from '@/components/ValidatedMetrics';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, ArrowUp, BarChart, ChevronLeft, ChevronRight, Code, DollarSign, GripVertical, Target, TrendingUp, Users, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowUp, BarChart, ChevronLeft, ChevronRight, Code, DollarSign, GripVertical, Lock, Target, TrendingUp, Users, Zap } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useDraggableCards } from './hooks/useDraggableCards';
 import UserProfile from './components/UserProfile';
+import { Footer } from './components/Footer';
+import { useAuth } from './contexts/AuthContext';
+import { debouncedSaveLayout, fetchLayout } from './services/layoutService';
 
 // Storage key for financial model variables
 const STORAGE_KEY = 'financial-model-variables';
@@ -1475,13 +1478,26 @@ const TeamCompensationSlide = () => {
 const App = ({ userProfile }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [editMode, setEditMode] = useState(false);
+  const { isAdmin, user } = useAuth();
   
   const nextSlide = () => setCurrentSlide((prev) => Math.min(prev + 1, slides.length - 1));
   const prevSlide = () => setCurrentSlide((prev) => Math.max(prev - 1, 0));
   const goToSlide = (index) => setCurrentSlide(index);
   
-  // Enable draggable cards when in edit mode
-  useDraggableCards(editMode);
+  // Handle layout changes (save to backend)
+  const handleLayoutChange = async (layout) => {
+    if (!isAdmin || !user) return;
+    
+    try {
+      await debouncedSaveLayout(layout, user.id);
+      console.log('Layout saved successfully');
+    } catch (error) {
+      console.error('Failed to save layout:', error);
+    }
+  };
+  
+  // Enable draggable cards when in edit mode (admin only)
+  useDraggableCards(editMode && isAdmin, handleLayoutChange);
   
   // Automatically add draggable-card class to all Card components
   useEffect(() => {
@@ -3536,7 +3552,7 @@ const App = ({ userProfile }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col pb-12">
       {/* Header */}
       <div className="border-b bg-white/95 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -3548,23 +3564,35 @@ const App = ({ userProfile }) => {
             {/* User Profile & Logout */}
             <UserProfile userProfile={userProfile} />
             
-            <Button
-              variant={editMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => setEditMode(!editMode)}
-              className="gap-2"
-            >
-              <GripVertical className="w-4 h-4" />
-              {editMode ? "Lock Layout" : "Edit Layout"}
-            </Button>
-            {editMode && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={resetLayout}
-              >
-                Reset Layout
-              </Button>
+            {/* Admin-only: Edit Mode Toggle */}
+            {isAdmin && (
+              <>
+                <Button
+                  variant={editMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setEditMode(!editMode)}
+                  className="gap-2"
+                >
+                  {editMode ? <Lock className="w-4 h-4" /> : <GripVertical className="w-4 h-4" />}
+                  {editMode ? "Lock Layout" : "Edit Layout"}
+                </Button>
+                {editMode && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={resetLayout}
+                  >
+                    Reset Layout
+                  </Button>
+                )}
+              </>
+            )}
+            
+            {!isAdmin && editMode && (
+              <Badge variant="outline" className="text-xs">
+                <Lock className="w-3 h-3 mr-1" />
+                Layout Locked
+              </Badge>
             )}
             <span className="text-sm text-muted-foreground">
               {currentSlide + 1} / {slides.length}
@@ -3584,10 +3612,16 @@ const App = ({ userProfile }) => {
             <h2 className="text-2xl md:text-2xl text-xl font-bold">{slides[currentSlide].title}</h2>
             <p className="text-sm text-muted-foreground">{slides[currentSlide].subtitle}</p>
           </div>
-          {editMode && (
+          {editMode && isAdmin && (
             <Badge variant="secondary" className="gap-2 hidden md:flex">
               <GripVertical className="w-3 h-3" />
               Drag to reposition
+            </Badge>
+          )}
+          {!isAdmin && (
+            <Badge variant="outline" className="gap-2 hidden md:flex text-xs">
+              <Lock className="w-3 h-3" />
+              View Only
             </Badge>
           )}
         </div>
@@ -3642,6 +3676,9 @@ const App = ({ userProfile }) => {
           </Button>
         </div>
       </div>
+      
+      {/* Fixed Footer */}
+      <Footer />
     </div>
   );
 };
