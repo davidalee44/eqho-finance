@@ -94,7 +94,6 @@ export const BentoDashboard = ({ slides, onSlideClick, currentSlideIndex = 0 }) 
 
   return (
     <>
-      <MagneticCursor />
       <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 space-y-8">
         {/* Header */}
         <div className="space-y-2">

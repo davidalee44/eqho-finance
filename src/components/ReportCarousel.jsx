@@ -137,8 +137,51 @@ export const ReportCarousel = ({ slides, onExit, autoAdvanceInterval = null }) =
         </Button>
       )}
 
+      {/* Top Navigation Bar - Always Visible */}
+      <div className="fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b shadow-md">
+        <div className="flex items-center justify-between px-6 py-3">
+          {/* Left: Previous Button */}
+          <Button
+            disabled={index === 0}
+            onClick={handlePrevious}
+            variant="ghost"
+            className={`flex items-center gap-2 ${
+              index === 0 ? 'opacity-40 cursor-not-allowed' : 'hover:bg-accent'
+            }`}
+            aria-label="Previous slide"
+          >
+            <ChevronLeft className="w-5 h-5" />
+            <span className="hidden sm:inline">Previous</span>
+          </Button>
+
+          {/* Center: Slide Counter & Progress */}
+          <div className="flex items-center gap-4">
+            <div className="bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-semibold">
+              {index + 1} / {slides.length}
+            </div>
+            <div className="hidden md:block text-sm text-muted-foreground">
+              {slides[index]?.title}
+            </div>
+          </div>
+
+          {/* Right: Next Button */}
+          <Button
+            disabled={index === slides.length - 1}
+            onClick={handleNext}
+            variant="ghost"
+            className={`flex items-center gap-2 ${
+              index === slides.length - 1 ? 'opacity-40 cursor-not-allowed' : 'hover:bg-accent'
+            }`}
+            aria-label="Next slide"
+          >
+            <span className="hidden sm:inline">Next</span>
+            <ChevronRight className="w-5 h-5" />
+          </Button>
+        </div>
+      </div>
+
       {/* Main Carousel */}
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full pt-16">
         {/* Slides Container */}
         <div className="flex-1 relative overflow-hidden" ref={containerRef}>
           <motion.div
@@ -165,39 +208,57 @@ export const ReportCarousel = ({ slides, onExit, autoAdvanceInterval = null }) =
             ))}
           </motion.div>
 
-          {/* Previous Button - Middle Left */}
+          {/* Previous Button - Middle Left - Always Visible */}
           <Button
             disabled={index === 0}
             onClick={handlePrevious}
             variant="ghost"
             size="icon"
-            className={`absolute left-8 top-1/2 -translate-y-1/2 w-16 h-16 rounded-full shadow-2xl transition-all z-20
+            className={`absolute left-4 top-1/2 -translate-y-1/2 w-16 h-16 rounded-full 
+              shadow-2xl transition-all z-20 border-2
               ${
                 index === 0
-                  ? 'opacity-20 cursor-not-allowed'
-                  : 'bg-background/90 hover:bg-background hover:scale-125 hover:shadow-3xl'
+                  ? 'opacity-30 cursor-not-allowed bg-background/60'
+                  : 'bg-background/95 hover:bg-primary hover:text-primary-foreground hover:scale-110 hover:shadow-3xl border-primary/20'
               }`}
-            aria-label="Previous slide"
+            aria-label="Previous slide (Arrow Left)"
           >
             <ChevronLeft className="w-10 h-10" />
           </Button>
 
-          {/* Next Button - Middle Right */}
+          {/* Next Button - Middle Right - Always Visible */}
           <Button
             disabled={index === slides.length - 1}
             onClick={handleNext}
             variant="ghost"
             size="icon"
-            className={`absolute right-8 top-1/2 -translate-y-1/2 w-16 h-16 rounded-full shadow-2xl transition-all z-20
+            className={`absolute right-4 top-1/2 -translate-y-1/2 w-16 h-16 rounded-full 
+              shadow-2xl transition-all z-20 border-2
               ${
                 index === slides.length - 1
-                  ? 'opacity-20 cursor-not-allowed'
-                  : 'bg-background/90 hover:bg-background hover:scale-125 hover:shadow-3xl'
+                  ? 'opacity-30 cursor-not-allowed bg-background/60'
+                  : 'bg-background/95 hover:bg-primary hover:text-primary-foreground hover:scale-110 hover:shadow-3xl border-primary/20'
               }`}
-            aria-label="Next slide"
+            aria-label="Next slide (Arrow Right)"
           >
             <ChevronRight className="w-10 h-10" />
           </Button>
+
+          {/* Keyboard Shortcuts Hint - Bottom Left */}
+          <div className="absolute bottom-24 left-4 z-20 bg-background/90 backdrop-blur-sm border rounded-lg px-4 py-3 shadow-lg">
+            <p className="text-xs font-semibold text-muted-foreground mb-2">Keyboard Shortcuts</p>
+            <div className="space-y-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-0.5 bg-muted rounded text-foreground">←</kbd>
+                <kbd className="px-2 py-0.5 bg-muted rounded text-foreground">→</kbd>
+                <span>Navigate</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-0.5 bg-muted rounded text-foreground">Esc</kbd>
+                <span>Exit</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Footer - Always Visible */}
