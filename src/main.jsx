@@ -65,9 +65,17 @@ function AuthWrapper() {
           <div className="bg-black/60 backdrop-blur-xl rounded-lg sm:rounded-xl md:rounded-2xl shadow-2xl p-6 sm:p-7 md:p-8 border-2 border-cyan-500/30">
             {/* Header */}
             <div className="text-center mb-4 sm:mb-6 md:mb-8">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
-                Eqho Investor Portal
-              </h2>
+              <div className="flex justify-center mb-4">
+                <img 
+                  src="/eqho-logo.svg" 
+                  alt="Eqho" 
+                  className="h-12 sm:h-16 w-auto"
+                  style={{ filter: 'drop-shadow(0 0 20px rgba(0, 217, 255, 0.5))' }}
+                />
+              </div>
+              <p className="text-xl sm:text-2xl font-bold text-white mb-2">
+                Investor Portal
+              </p>
               <p className="text-cyan-300 text-xs sm:text-sm">
                 Secure Access Required
               </p>
