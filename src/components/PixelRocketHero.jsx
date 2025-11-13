@@ -186,15 +186,19 @@ const HeroNav = () => {
         <motion.nav 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1, transition: { delay: 1, duration: 1 } }}
-            className="absolute top-0 left-0 right-0 z-20 px-8 py-6"
+            className="absolute top-0 left-0 right-0 z-20 p-8"
         >
-            <div className="max-w-7xl mx-auto">
-                <div className="flex items-center gap-3">
-                    <span className="text-3xl">🚀</span>
-                    <span className="text-2xl font-bold text-white tracking-wider" style={{ fontFamily: "'Press Start 2P', system-ui" }}>
-                      TotheMoon
-                    </span>
-                </div>
+            <div className="flex items-center gap-4">
+                <span className="text-4xl">🚀</span>
+                <span 
+                  className="text-2xl font-bold text-white" 
+                  style={{ 
+                    fontFamily: "'Press Start 2P', system-ui",
+                    letterSpacing: '0.1em'
+                  }}
+                >
+                  TotheMoon
+                </span>
             </div>
         </motion.nav>
     );
