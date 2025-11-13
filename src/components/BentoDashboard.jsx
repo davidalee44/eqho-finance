@@ -44,7 +44,7 @@ export const BentoDashboard = ({ slides, onSlideClick, currentSlideIndex = 0 }) 
 
   // Define card configurations with sizes and backgrounds
   // Using col-span classes: 1 = small, 2 = medium, 3 = large (full width in 3-col grid)
-  // Clean minimal card design - white, greys, and black
+  // Clean minimal design - all white cards
   const cardConfigs = [
     { 
       colSpan: 'col-span-3', // Full width - Executive Summary
@@ -52,7 +52,7 @@ export const BentoDashboard = ({ slides, onSlideClick, currentSlideIndex = 0 }) 
     },
     { 
       colSpan: 'col-span-1', // Small - Financial Performance
-      background: <div className="absolute inset-0 bg-gray-50" />
+      background: <div className="absolute inset-0 bg-white" />
     },
     { 
       colSpan: 'col-span-2', // Medium - Market Position
@@ -60,7 +60,7 @@ export const BentoDashboard = ({ slides, onSlideClick, currentSlideIndex = 0 }) 
     },
     { 
       colSpan: 'col-span-1', // Small - Business Model
-      background: <div className="absolute inset-0 bg-gray-100" />
+      background: <div className="absolute inset-0 bg-white" />
     },
     { 
       colSpan: 'col-span-1', // Small - Growth Strategy
@@ -68,11 +68,11 @@ export const BentoDashboard = ({ slides, onSlideClick, currentSlideIndex = 0 }) 
     },
     { 
       colSpan: 'col-span-1', // Small - Use of Funds
-      background: <div className="absolute inset-0 bg-gray-50" />
+      background: <div className="absolute inset-0 bg-white" />
     },
     { 
       colSpan: 'col-span-1', // Small - 36-Month Projection
-      background: <div className="absolute inset-0 bg-gray-900" />
+      background: <div className="absolute inset-0 bg-white" />
     },
     { 
       colSpan: 'col-span-2', // Medium - SaaS Metrics
@@ -80,29 +80,31 @@ export const BentoDashboard = ({ slides, onSlideClick, currentSlideIndex = 0 }) 
     },
     { 
       colSpan: 'col-span-1', // Small - Financial Model
-      background: <div className="absolute inset-0 bg-gray-50" />
+      background: <div className="absolute inset-0 bg-white" />
     },
     { 
       colSpan: 'col-span-2', // Medium - Team & Compensation
-      background: <div className="absolute inset-0 bg-gray-100" />
+      background: <div className="absolute inset-0 bg-white" />
     },
     { 
       colSpan: 'col-span-1', // Small - AI Financial Report
-      background: <div className="absolute inset-0 bg-black" />
+      background: <div className="absolute inset-0 bg-white" />
     },
   ];
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 space-y-8">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight">
-          Presentation Dashboard
-        </h1>
-        <p className="text-muted-foreground text-lg">
-          Navigate through all presentation slides
-        </p>
-      </div>
+    <>
+      <MagneticCursor />
+      <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 space-y-8">
+        {/* Header */}
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold tracking-tight">
+            Presentation Dashboard
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Navigate through all presentation slides
+          </p>
+        </div>
 
       {/* Bento Grid */}
       <BentoGrid className="md:grid-cols-3">
@@ -142,6 +144,7 @@ export const BentoDashboard = ({ slides, onSlideClick, currentSlideIndex = 0 }) 
           Use arrow keys or click cards to navigate between slides
         </p>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
