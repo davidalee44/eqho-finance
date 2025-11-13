@@ -1,3 +1,4 @@
+import { ComprehensiveMetrics } from '@/components/ComprehensiveMetrics';
 import { DynamicFinancialInsights } from '@/components/DynamicFinancialInsights';
 import FinancialReport from '@/components/FinancialReport';
 import { MRRMetrics } from '@/components/MRRMetrics';
@@ -16,13 +17,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ValidatedMetrics } from '@/components/ValidatedMetrics';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, ArrowUp, BarChart, ChevronLeft, ChevronRight, Code, DollarSign, GripVertical, Lock, Target, TrendingUp, Users, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowUp, BarChart, ChevronLeft, ChevronRight, Code, DollarSign, GripVertical, Lock, Target, TrendingUp, Users, Zap, LayoutGrid, Presentation } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { useDraggableCards } from './hooks/useDraggableCards';
-import UserProfile from './components/UserProfile';
+import { BentoDashboard } from './components/BentoDashboard';
 import { Footer } from './components/Footer';
+import UserProfile from './components/UserProfile';
 import { useAuth } from './contexts/AuthContext';
-import { debouncedSaveLayout, fetchLayout } from './services/layoutService';
+import { useDraggableCards } from './hooks/useDraggableCards';
+import { debouncedSaveLayout } from './services/layoutService';
 
 // Storage key for financial model variables
 const STORAGE_KEY = 'financial-model-variables';
@@ -1275,7 +1277,7 @@ const TeamCompensationSlide = () => {
                       <p className="font-medium mb-1">How it works:</p>
                       <ul className="list-disc list-inside space-y-1 text-muted-foreground ml-2">
                         <li>Matches names with existing team members to preserve roles</li>
-                        <li>New names default to "Team Member" role (edit after import)</li>
+                        <li>New names default to &quot;Team Member&quot; role (edit after import)</li>
                         <li>Unmatched entries go to Operations department</li>
                         <li>Accepts CSV, TSV, or Excel exports</li>
                       </ul>
@@ -1286,7 +1288,7 @@ const TeamCompensationSlide = () => {
                       <ol className="list-decimal list-inside space-y-1 text-muted-foreground ml-2">
                         <li>Export contractor report from QuickBooks</li>
                         <li>Save as CSV or keep as Excel</li>
-                        <li>Click "Upload QB Excel" button</li>
+                        <li>Click &quot;Upload QB Excel&quot; button</li>
                         <li>Select your file</li>
                         <li>Review imported data and assign roles</li>
                       </ol>
@@ -1478,11 +1480,15 @@ const TeamCompensationSlide = () => {
 const App = ({ userProfile }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [editMode, setEditMode] = useState(false);
+  const [viewMode, setViewMode] = useState('dashboard'); // 'dashboard' or 'slide'
   const { isAdmin, user } = useAuth();
   
   const nextSlide = () => setCurrentSlide((prev) => Math.min(prev + 1, slides.length - 1));
   const prevSlide = () => setCurrentSlide((prev) => Math.max(prev - 1, 0));
-  const goToSlide = (index) => setCurrentSlide(index);
+  const goToSlide = (index) => {
+    setCurrentSlide(index);
+    setViewMode('slide'); // Switch to slide view when navigating
+  };
   
   // Handle layout changes (save to backend)
   const handleLayoutChange = async (layout) => {
@@ -2672,7 +2678,7 @@ const App = ({ userProfile }) => {
                       <TableCell className="text-right">∞</TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell>Series A ($3-5M)</TableCell>
+                      <TableCell>Additional Funding Round</TableCell>
                       <TableCell className="text-right">12-18 mo</TableCell>
                       <TableCell className="text-right">$5-8M</TableCell>
                       <TableCell className="text-right">$20-30M</TableCell>
@@ -3227,33 +3233,7 @@ const App = ({ userProfile }) => {
               {/* Validated Metrics from Backend */}
               <ValidatedMetrics />
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Unit Economics</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">CAC</span>
-                    <span className="font-medium">$831</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">LTV (36mo)</span>
-                    <span className="font-medium">$13,214</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">LTV/CAC Ratio</span>
-                    <span className="font-medium text-green-600">15.9x</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">CAC Payback</span>
-                    <span className="font-medium text-green-600">2.3 mo</span>
-                  </div>
-                  <Separator />
-                  <div className="p-2 bg-green-50 rounded">
-                    <p className="font-medium text-green-800 text-center">Best-in-Class Economics</p>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Note: Unit Economics are now included in ComprehensiveMetrics component */}
             </div>
           </div>
 
@@ -3315,66 +3295,8 @@ const App = ({ userProfile }) => {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Cohort Performance</CardTitle>
-                <CardDescription className="text-xs">Retention and expansion metrics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-xs font-medium mb-2">Retention by Segment</h4>
-                    <div className="space-y-2">
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span>TowPilot Retention</span>
-                          <span className="font-medium text-green-600">88.1%</span>
-                        </div>
-                        <Progress value={88.1} className="h-2" />
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span>Other Products</span>
-                          <span className="font-medium">68.8%</span>
-                        </div>
-                        <Progress value={68.8} className="h-2" />
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="font-semibold">Overall Platform</span>
-                          <span className="font-semibold text-green-600">85.0%</span>
-                        </div>
-                        <Progress value={85.0} className="h-2" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <h4 className="text-xs font-medium mb-2">Customer Metrics</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-2 border rounded text-center">
-                        <p className="text-xs text-muted-foreground">Active</p>
-                        <p className="text-xl font-bold text-green-600">85</p>
-                      </div>
-                      <div className="p-2 border rounded text-center">
-                        <p className="text-xs text-muted-foreground">Churned</p>
-                        <p className="text-xl font-bold text-red-600">15</p>
-                      </div>
-                      <div className="p-2 border rounded text-center">
-                        <p className="text-xs text-muted-foreground">Net Adds</p>
-                        <p className="text-xl font-bold">+70</p>
-                      </div>
-                      <div className="p-2 border rounded text-center">
-                        <p className="text-xs text-muted-foreground">Growth</p>
-                        <p className="text-xl font-bold">467%</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Comprehensive Metrics - All validated from backend */}
+            <ComprehensiveMetrics />
           </div>
 
           <div className="grid grid-cols-3 gap-4">
@@ -3412,77 +3334,7 @@ const App = ({ userProfile }) => {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Customer Acquisition</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total CAC</span>
-                    <span className="font-medium">$831</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Sales Cost</span>
-                    <span>$450</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Marketing Cost</span>
-                    <span>$381</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Payback Period</span>
-                    <span className="font-medium text-green-600">2.3 months</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">vs Industry Median</span>
-                    <span className="text-green-600">86% faster</span>
-                  </div>
-                  <Separator />
-                  <div className="p-2 bg-green-50 rounded text-center">
-                    <p className="font-medium text-green-800">World-Class CAC</p>
-                    <p className="text-green-700">Top 5% efficiency</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Expansion Metrics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Gross Retention</span>
-                    <span className="font-medium">92%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Net Retention</span>
-                    <span className="font-medium text-green-600">118%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Expansion Revenue</span>
-                    <span className="font-medium">18%</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">ACV</span>
-                    <span className="font-medium">$7,894</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">LTV</span>
-                    <span className="font-medium">$13,214</span>
-                  </div>
-                  <Separator />
-                  <div className="p-2 bg-blue-50 rounded text-center">
-                    <p className="font-medium text-blue-800">LTV/CAC</p>
-                    <p className="text-2xl font-bold text-blue-900">15.9x</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Note: Customer Acquisition and Expansion Metrics are now included in ComprehensiveMetrics component above */}
           </div>
 
           <Card>
@@ -3561,11 +3413,22 @@ const App = ({ userProfile }) => {
             <Badge variant="outline">Funding Round</Badge>
           </div>
           <div className="flex items-center gap-4">
+            {/* View Mode Toggle */}
+            <Button
+              variant={viewMode === 'dashboard' ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode(viewMode === 'dashboard' ? 'slide' : 'dashboard')}
+              className="gap-2"
+            >
+              {viewMode === 'dashboard' ? <Presentation className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
+              {viewMode === 'dashboard' ? 'View Slides' : 'Dashboard'}
+            </Button>
+            
             {/* User Profile & Logout */}
             <UserProfile userProfile={userProfile} />
             
             {/* Admin-only: Edit Mode Toggle */}
-            {isAdmin && (
+            {isAdmin && viewMode === 'slide' && (
               <>
                 <Button
                   variant={editMode ? "default" : "outline"}
@@ -3588,94 +3451,110 @@ const App = ({ userProfile }) => {
               </>
             )}
             
-            {!isAdmin && editMode && (
-              <Badge variant="outline" className="text-xs">
-                <Lock className="w-3 h-3 mr-1" />
-                Layout Locked
-              </Badge>
+            {viewMode === 'slide' && (
+              <>
+                {!isAdmin && editMode && (
+                  <Badge variant="outline" className="text-xs">
+                    <Lock className="w-3 h-3 mr-1" />
+                    Layout Locked
+                  </Badge>
+                )}
+                <span className="text-sm text-muted-foreground">
+                  {currentSlide + 1} / {slides.length}
+                </span>
+                <Progress value={(currentSlide + 1) / slides.length * 100} className="w-32" />
+              </>
             )}
-            <span className="text-sm text-muted-foreground">
-              {currentSlide + 1} / {slides.length}
-            </span>
-            <Progress value={(currentSlide + 1) / slides.length * 100} className="w-32" />
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div 
-        className={`flex-1 container mx-auto px-4 py-6 ${editMode ? 'edit-mode' : ''}`}
-        style={{ position: 'relative' }}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl md:text-2xl text-xl font-bold">{slides[currentSlide].title}</h2>
-            <p className="text-sm text-muted-foreground">{slides[currentSlide].subtitle}</p>
-          </div>
-          {editMode && isAdmin && (
-            <Badge variant="secondary" className="gap-2 hidden md:flex">
-              <GripVertical className="w-3 h-3" />
-              Drag to reposition
-            </Badge>
-          )}
-          {!isAdmin && (
-            <Badge variant="outline" className="gap-2 hidden md:flex text-xs">
-              <Lock className="w-3 h-3" />
-              View Only
-            </Badge>
-          )}
+      {viewMode === 'dashboard' ? (
+        <div className="flex-1 container mx-auto px-4 py-6">
+          <BentoDashboard 
+            slides={slides}
+            onSlideClick={goToSlide}
+            currentSlideIndex={currentSlide}
+          />
         </div>
-        
-        <div className="h-[calc(100vh-200px)] overflow-auto" style={{ position: 'relative' }}>
-          {slides[currentSlide].content}
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <div className="border-t p-4">
-        <div className="container mx-auto flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={prevSlide}
-            disabled={currentSlide === 0}
+      ) : (
+        <>
+          <div 
+            className={`flex-1 container mx-auto px-4 py-6 ${editMode ? 'edit-mode' : ''}`}
+            style={{ position: 'relative' }}
           >
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            Previous
-          </Button>
-          
-          <div className="flex items-center gap-4">
-            <div className="flex gap-1">
-              {slides.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => goToSlide(index)}
-                  className={cn(
-                    "w-2 h-2 rounded-full transition-all",
-                    currentSlide === index 
-                      ? "bg-primary w-6" 
-                      : "bg-muted hover:bg-muted-foreground/20"
-                  )}
-                />
-              ))}
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold">{slides[currentSlide].title}</h2>
+                <p className="text-sm text-muted-foreground">{slides[currentSlide].subtitle}</p>
+              </div>
+              {editMode && isAdmin && (
+                <Badge variant="secondary" className="gap-2 hidden md:flex">
+                  <GripVertical className="w-3 h-3" />
+                  Drag to reposition
+                </Badge>
+              )}
+              {!isAdmin && (
+                <Badge variant="outline" className="gap-2 hidden md:flex text-xs">
+                  <Lock className="w-3 h-3" />
+                  View Only
+                </Badge>
+              )}
             </div>
             
-            <span className="text-sm text-muted-foreground font-medium">
-              Page {currentSlide + 1} of {slides.length}
-            </span>
+            <div className="h-[calc(100vh-200px)] overflow-auto" style={{ position: 'relative' }}>
+              {slides[currentSlide].content}
+            </div>
           </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={nextSlide}
-            disabled={currentSlide === slides.length - 1}
-          >
-            Next
-            <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
-        </div>
-      </div>
+
+          {/* Navigation */}
+          <div className="border-t p-4">
+            <div className="container mx-auto flex items-center justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={prevSlide}
+                disabled={currentSlide === 0}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Previous
+              </Button>
+              
+              <div className="flex items-center gap-4">
+                <div className="flex gap-1">
+                  {slides.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => goToSlide(index)}
+                      className={cn(
+                        "w-2 h-2 rounded-full transition-all",
+                        currentSlide === index 
+                          ? "bg-primary w-6" 
+                          : "bg-muted hover:bg-muted-foreground/20"
+                      )}
+                    />
+                  ))}
+                </div>
+                
+                <span className="text-sm text-muted-foreground font-medium">
+                  Page {currentSlide + 1} of {slides.length}
+                </span>
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={nextSlide}
+                disabled={currentSlide === slides.length - 1}
+              >
+                Next
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
       
       {/* Fixed Footer */}
       <Footer />
