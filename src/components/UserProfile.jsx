@@ -11,25 +11,23 @@ export const UserProfile = ({ userProfile }) => {
   const userName = userProfile?.full_name || userProfile?.name || userEmail.split('@')[0];
 
   return (
-    <div className="flex items-center gap-4 px-4 py-2 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700">
+    <div className="flex items-center gap-3">
       {/* User Info */}
-      <div className="flex items-center gap-3">
-        {/* Avatar */}
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+      <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-md">
+        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
           {userName.charAt(0).toUpperCase()}
         </div>
-        
-        {/* User Details */}
-        <div className="hidden md:block">
-          <p className="text-sm font-semibold text-white">{userName}</p>
-          <p className="text-xs text-gray-400">{userEmail}</p>
+        <div className="text-xs">
+          <p className="font-medium text-foreground">{userName}</p>
+          <p className="text-muted-foreground">{userEmail}</p>
         </div>
       </div>
 
       {/* Logout Button */}
       <button
         onClick={handleSignOut}
-        className="px-4 py-2 bg-red-600/80 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex items-center gap-2"
+        className="px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors flex items-center gap-1.5"
+        title="Sign out"
       >
         <svg 
           xmlns="http://www.w3.org/2000/svg" 
