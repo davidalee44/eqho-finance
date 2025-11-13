@@ -14,6 +14,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MagneticCursor } from './ui/magnetic-cursor';
 
 /**
  * BentoDashboard - Main dashboard showing all presentation slides as cards
@@ -94,6 +95,7 @@ export const BentoDashboard = ({ slides, onSlideClick, currentSlideIndex = 0 }) 
 
   return (
     <>
+      <MagneticCursor />
       <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 space-y-8">
         {/* Header */}
         <div className="space-y-2">
