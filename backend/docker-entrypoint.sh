@@ -7,6 +7,10 @@ if [ -n "$MONGODB_URL" ]; then
     sleep 5
 fi
 
+# Get port from environment variable (Railway sets PORT)
+# Default to 8000 if not set
+PORT=${PORT:-8000}
+
 # Run the application
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+exec uvicorn app.main:app --host 0.0.0.0 --port $PORT
 
