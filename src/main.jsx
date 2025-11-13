@@ -77,8 +77,7 @@ function AuthWrapper() {
                     padding: '12px',
                   },
                   label: {
-                    color: '#9ca3af',
-                    fontWeight: '600',
+                    display: 'none',
                   },
                   message: {
                     color: '#ef4444',
