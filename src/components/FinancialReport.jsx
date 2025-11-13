@@ -16,11 +16,12 @@ import { ReportActions } from './ReportActions';
 import { ReportCarousel } from './ReportCarousel';
 import { VersionControl } from './VersionControl';
 import { ExecutiveSummarySlide } from './slides/ExecutiveSummarySlide';
-import { KeyInsightsSlide } from './slides/KeyInsightsSlide';
-import { SpendingBreakdownSlide } from './slides/SpendingBreakdownSlide';
-import { CashFlowForecastSlide } from './slides/CashFlowForecastSlide';
-import { RiskAnalysisSlide } from './slides/RiskAnalysisSlide';
-import { ActionPlanSlide } from './slides/ActionPlanSlide';
+// Removed negative slides (available for internal analysis if needed):
+// - KeyInsightsSlide (burn rate crisis messaging)
+// - SpendingBreakdownSlide (expense problem focus)
+// - RiskAnalysisSlide (critical warnings)
+// - ActionPlanSlide (rescue plan implications)
+// - CashFlowForecastSlide (potentially negative trajectory)
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
