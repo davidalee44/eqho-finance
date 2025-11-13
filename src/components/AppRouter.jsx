@@ -53,13 +53,19 @@ export function AppRouter() {
             // Default to investor role for now
             console.warn('User profile not found, defaulting to investor role:', profileError)
             setUserProfile({
+              email: user.email,
+              name: user.user_metadata?.name || user.user_metadata?.full_name,
               role: user.user_metadata?.role || 'investor',
               app_access: user.user_metadata?.app_access || ['investor-deck'],
               company: user.user_metadata?.company,
               full_name: user.user_metadata?.full_name || user.email?.split('@')[0]
             })
           } else {
-            setUserProfile(profile)
+            setUserProfile({
+              ...profile,
+              email: user.email,
+              name: user.user_metadata?.name || user.user_metadata?.full_name
+            })
           }
 
           // Log access (optional - will fail if table doesn't exist yet)
@@ -127,6 +133,6 @@ export function AppRouter() {
   }
 
   // Show investor deck
-  return <App />
+  return <App userProfile={userProfile} />
 }
 

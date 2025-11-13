@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { AlertTriangle, ArrowUp, BarChart, ChevronLeft, ChevronRight, Code, DollarSign, GripVertical, Target, TrendingUp, Users, Zap } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useDraggableCards } from './hooks/useDraggableCards';
+import UserProfile from './components/UserProfile';
 
 // Storage key for financial model variables
 const STORAGE_KEY = 'financial-model-variables';
@@ -1471,7 +1472,7 @@ const TeamCompensationSlide = () => {
   );
 };
 
-const App = () => {
+const App = ({ userProfile }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [editMode, setEditMode] = useState(false);
   
@@ -3537,13 +3538,16 @@ const App = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="border-b">
+      <div className="border-b bg-white/95 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-semibold">Eqho, Inc.</h1>
             <Badge variant="outline">Funding Round</Badge>
           </div>
           <div className="flex items-center gap-4">
+            {/* User Profile & Logout */}
+            <UserProfile userProfile={userProfile} />
+            
             <Button
               variant={editMode ? "default" : "outline"}
               size="sm"
