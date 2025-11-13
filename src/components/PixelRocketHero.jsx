@@ -310,7 +310,10 @@ export const PixelRocketHero = ({ children }) => {
                   custom={i} 
                   initial={{ opacity: 0, y: 50 }} 
                   animate={textControls} 
-                  style={{ display: 'inline-block' }}
+                  style={{ 
+                    display: 'inline-block',
+                    paddingLeft: i === 5 ? '0.3em' : '0' // Add space before "M" in "Moon"
+                  }}
                 >
                     {char}
                 </motion.span>
