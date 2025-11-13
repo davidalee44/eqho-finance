@@ -1,18 +1,26 @@
 import { prepareReportDataForExport } from '@/lib/exportUtils';
 import {
-  AlertCircle,
-  AlertTriangle,
-  Calendar,
-  Cloud,
-  DollarSign,
-  Megaphone,
-  TrendingDown,
-  TrendingUp,
-  Users
+    AlertCircle,
+    AlertTriangle,
+    Calendar,
+    Cloud,
+    DollarSign,
+    Megaphone,
+    Presentation,
+    TrendingDown,
+    TrendingUp,
+    Users
 } from 'lucide-react';
 import React from 'react';
 import { ReportActions } from './ReportActions';
+import { ReportCarousel } from './ReportCarousel';
 import { VersionControl } from './VersionControl';
+import { ExecutiveSummarySlide } from './slides/ExecutiveSummarySlide';
+import { KeyInsightsSlide } from './slides/KeyInsightsSlide';
+import { SpendingBreakdownSlide } from './slides/SpendingBreakdownSlide';
+import { CashFlowForecastSlide } from './slides/CashFlowForecastSlide';
+import { RiskAnalysisSlide } from './slides/RiskAnalysisSlide';
+import { ActionPlanSlide } from './slides/ActionPlanSlide';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -23,6 +31,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 const FinancialReport = () => {
+  // View mode: 'normal' or 'presentation'
+  const [viewMode, setViewMode] = React.useState('normal');
+  
   // Investment parameters
   const [capitalRaise, setCapitalRaise] = React.useState(400000);
   const [showWithInvestment, setShowWithInvestment] = React.useState(true);
@@ -205,6 +216,70 @@ const FinancialReport = () => {
     recentTransactions
   );
 
+  // Prepare slides for presentation mode
+  const slides = [
+    {
+      id: 'executive-summary',
+      title: 'Executive Summary',
+      icon: <DollarSign className="h-4 w-4" />,
+      component: (
+        <ExecutiveSummarySlide
+          metrics={metrics}
+          showWithInvestment={showWithInvestment}
+          capitalRaise={capitalRaise}
+          cashFlowForecast={cashFlowForecast}
+        />
+      ),
+    },
+    {
+      id: 'key-insights',
+      title: 'Key Insights',
+      icon: <AlertCircle className="h-4 w-4" />,
+      component: <KeyInsightsSlide />,
+    },
+    {
+      id: 'spending-breakdown',
+      title: 'Spending Breakdown',
+      icon: <TrendingDown className="h-4 w-4" />,
+      component: <SpendingBreakdownSlide spendingCategories={spendingCategories} />,
+    },
+    {
+      id: 'cash-flow-forecast',
+      title: 'Cash Flow Forecast',
+      icon: <Calendar className="h-4 w-4" />,
+      component: (
+        <CashFlowForecastSlide
+          cashFlowForecast={cashFlowForecast}
+          showWithInvestment={showWithInvestment}
+          capitalRaise={capitalRaise}
+        />
+      ),
+    },
+    {
+      id: 'risk-analysis',
+      title: 'Risk Analysis',
+      icon: <AlertTriangle className="h-4 w-4" />,
+      component: <RiskAnalysisSlide risks={risks} />,
+    },
+    {
+      id: 'action-plan',
+      title: 'Action Plan',
+      icon: <TrendingUp className="h-4 w-4" />,
+      component: <ActionPlanSlide recommendations={recommendations} />,
+    },
+  ];
+
+  // Render presentation mode
+  if (viewMode === 'presentation') {
+    return (
+      <ReportCarousel
+        slides={slides}
+        onExit={() => setViewMode('normal')}
+      />
+    );
+  }
+
+  // Render normal mode
   return (
     <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Export & Version Control Actions */}
@@ -254,16 +329,25 @@ const FinancialReport = () => {
       <div ref={reportRef}>
       {/* Header */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Weekly Financial Analysis & Cash Flow Forecast</h1>
             <p className="text-muted-foreground">Report Period: November 12, 2025 | Data: October 2025</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <Badge variant="outline" className="text-lg px-4 py-2">
               <Calendar className="w-4 h-4 mr-2" />
               90-Day Forecast
             </Badge>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setViewMode('presentation')}
+              className="gap-2"
+            >
+              <Presentation className="w-4 h-4" />
+              Presentation Mode
+            </Button>
             <Button
               variant={showWithInvestment ? "default" : "outline"}
               size="sm"
