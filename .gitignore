@@ -68,6 +68,9 @@ client_secret_*.json
 .claude/
 .archive/
 
+# Private credentials
+ADMIN_CREDENTIALS.md
+
 # Status docs (archived)
 ANIMATION_UPDATE.md
 BROWSER_REVIEW_REPORT.md
