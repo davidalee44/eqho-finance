@@ -243,7 +243,7 @@ export const PixelRocketHero = ({ children }) => {
       {/* Main content */}
       <div className="relative z-10 text-center px-4 max-w-6xl mx-auto">
         <h1 
-          className="text-4xl font-bold tracking-tighter text-white md:text-6xl mb-2" 
+          className="text-4xl font-bold tracking-tighter text-white md:text-6xl mb-6" 
           style={{ fontFamily: "'Press Start 2P', system-ui", textShadow: '4px 4px 0px #ff00ff, -2px -2px 0px #00ffff' }}
         >
             {headline.split("").map((char, i) => (
@@ -263,7 +263,7 @@ export const PixelRocketHero = ({ children }) => {
           custom={headline.length}
           initial={{ opacity: 0, y: 30 }}
           animate={textControls}
-          className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-cyan-300 mb-8"
+          className="mx-auto max-w-xl text-sm leading-relaxed text-cyan-300 mb-12"
           style={{ fontFamily: "'Press Start 2P', system-ui" }}
         >
           Eqho Investor Portal
@@ -273,21 +273,11 @@ export const PixelRocketHero = ({ children }) => {
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }} 
           animate={buttonControls}
-          className="mt-8"
         >
           {children}
         </motion.div>
       </div>
 
-      {/* Footer info */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1, transition: { delay: 3, duration: 1 } }}
-        className="absolute bottom-8 z-10 text-center text-cyan-400 text-xs"
-        style={{ fontFamily: "'Press Start 2P', system-ui" }}
-      >
-        <p>$500K Seed Round | 10% M/M Growth</p>
-      </motion.div>
     </div>
   );
 };
