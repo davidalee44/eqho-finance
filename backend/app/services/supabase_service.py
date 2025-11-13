@@ -22,12 +22,13 @@ class SupabaseService:
             return
 
         try:
+            logger.info(f"Connecting to Supabase: {settings.SUPABASE_URL}")
             cls.client = create_client(
                 settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY
             )
-            logger.info("✅ Connected to Supabase")
+            logger.info("✅ Connected to Supabase successfully")
         except Exception as e:
-            logger.error(f"❌ Failed to connect to Supabase: {e}")
+            logger.error(f"❌ Failed to connect to Supabase: {e}", exc_info=True)
             cls.client = None
 
     @classmethod
@@ -40,10 +41,15 @@ class SupabaseService:
         Args:
             product_category: Filter by product category (e.g., 'TowPilot')
         """
+        filter_info = f" (category: {product_category})" if product_category else ""
+        logger.debug(f"Fetching active subscriptions{filter_info}")
+        
         if not cls.client:
+            logger.info("Client not initialized, attempting connection")
             cls.connect()
 
         if not cls.client:
+            logger.error("Cannot fetch subscriptions: Supabase client unavailable")
             return []
 
         try:
@@ -57,9 +63,10 @@ class SupabaseService:
                 query = query.eq("product_category", product_category)
 
             response = query.execute()
+            logger.info(f"Retrieved {len(response.data)} active subscriptions{filter_info}")
             return response.data
         except Exception as e:
-            logger.error(f"Error fetching subscriptions: {e}")
+            logger.error(f"Error fetching subscriptions{filter_info}: {e}", exc_info=True)
             return []
 
     @classmethod

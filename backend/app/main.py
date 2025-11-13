@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -5,6 +6,19 @@ from app.api.v1 import audit, cache, emails, layouts, metrics, snapshots, stripe
 from app.core.config import settings
 from app.services.supabase_service import SupabaseService
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+# Set specific loggers to DEBUG for more detailed output
+logging.getLogger('app.services.auth').setLevel(logging.DEBUG)
+logging.getLogger('app.services.supabase_service').setLevel(logging.DEBUG)
+logging.getLogger('app.api.v1.audit').setLevel(logging.INFO)
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Eqho Due Diligence API",
@@ -16,7 +30,10 @@ app = FastAPI(
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
+    logger.info("🚀 Starting Eqho Due Diligence API...")
+    logger.info(f"CORS Origins: {settings.CORS_ORIGINS}")
     SupabaseService.connect()
+    logger.info("✅ Startup complete")
 
 # CORS middleware for React frontend
 app.add_middleware(
