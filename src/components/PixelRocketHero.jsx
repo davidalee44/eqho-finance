@@ -28,11 +28,16 @@ const PixelVoyagerCanvas = () => {
     
     const isDarkMode = true; // Force dark mode for consistency
 
-    // Post-processing for bloom effect
+    // Post-processing for bloom effect (reduced on mobile for performance)
     const renderScene = new RenderPass(scene, camera);
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+    const bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(window.innerWidth, window.innerHeight), 
+        isMobile ? 1.0 : 1.5,  // Reduce intensity on mobile
+        isMobile ? 0.3 : 0.4,  // Reduce radius on mobile
+        0.85
+    );
     bloomPass.threshold = 0;
-    bloomPass.strength = isDarkMode ? 1.2 : 0.6;
+    bloomPass.strength = isMobile ? 0.8 : (isDarkMode ? 1.2 : 0.6);
     bloomPass.radius = 0;
     const composer = new EffectComposer(renderer);
     composer.addPass(renderScene);
@@ -40,7 +45,6 @@ const PixelVoyagerCanvas = () => {
 
     // --- Starfield ---
     // Reduce star count on mobile for better performance
-    const isMobile = window.innerWidth < 768;
     const starCount = isMobile ? 500 : 1500;
     const starGeometry = new THREE.BufferGeometry();
     const starVertices = [];
@@ -87,10 +91,10 @@ const PixelVoyagerCanvas = () => {
     rocket.add(cockpit);
     scene.add(rocket);
 
-    // --- Rocket Trail (Object Pooling) ---
+    // --- Rocket Trail (Object Pooling) - Reduced on mobile for performance ---
     const trailPool = [];
     let trailIndex = 0;
-    const trailSize = 200;
+    const trailSize = isMobile ? 100 : 200; // Half the particles on mobile
     const trailGeo = new THREE.BoxGeometry(pixelSize * 1.5, pixelSize * 1.5, pixelSize * 1.5);
     for(let i=0; i<trailSize; i++) {
         const trailMat = new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0xff00ff : 0xee82ee });
@@ -108,24 +112,40 @@ const PixelVoyagerCanvas = () => {
     scene.add(light);
     scene.add(new THREE.AmbientLight(0x404040));
 
-    const handleMouseMove = (event) => {
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    // Mouse and touch event handlers for rocket tracking
+    const updatePointerPosition = (clientX, clientY) => {
+        mouse.x = (clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(clientY / window.innerHeight) * 2 + 1;
     };
+
+    const handleMouseMove = (event) => {
+        updatePointerPosition(event.clientX, event.clientY);
+    };
+    
+    const handleTouchMove = (event) => {
+        if (event.touches.length > 0) {
+            event.preventDefault(); // Prevent scrolling while touching
+            updatePointerPosition(event.touches[0].clientX, event.touches[0].clientY);
+        }
+    };
+    
     window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
 
     const animate = () => {
         requestAnimationFrame(animate);
         const delta = clock.getDelta();
         const elapsedTime = clock.getElapsedTime();
 
-        const targetPosition = new THREE.Vector3(mouse.x * 15, mouse.y * 10, 0);
-        rocket.position.lerp(targetPosition, 0.05);
-        rocket.rotation.y = (targetPosition.x - rocket.position.x) * 0.1;
-        rocket.rotation.x = -(targetPosition.y - rocket.position.y) * 0.1;
+        // Increased multipliers and lerp factor for closer mouse following
+        const targetPosition = new THREE.Vector3(mouse.x * 18, mouse.y * 12, 0);
+        rocket.position.lerp(targetPosition, 0.12); // Increased from 0.05 to 0.12 for faster response
+        rocket.rotation.y = (targetPosition.x - rocket.position.x) * 0.15; // Increased rotation speed
+        rocket.rotation.x = -(targetPosition.y - rocket.position.y) * 0.15;
 
-        // Emit trail particles
-        if(Math.random() > 0.3) {
+        // Emit trail particles (reduced rate on mobile)
+        const emissionThreshold = isMobile ? 0.5 : 0.3; // Emit less frequently on mobile
+        if(Math.random() > emissionThreshold) {
             const particle = trailPool[trailIndex];
             particle.position.copy(rocket.position);
             particle.position.y -= 0.7;
@@ -161,6 +181,7 @@ const PixelVoyagerCanvas = () => {
     return () => {
         window.removeEventListener('resize', handleResize);
         window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('touchmove', handleTouchMove);
         if (mountRef.current) {
           mountRef.current.removeChild(renderer.domElement);
         }
@@ -174,11 +195,24 @@ const PixelVoyagerCanvas = () => {
 const HeroNav = () => {
     return (
         <motion.nav 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { delay: 1, duration: 1 } }}
-            className="absolute top-0 left-0 right-0 z-20 p-4 sm:p-6 md:p-8"
+            initial={{ 
+                opacity: 0, 
+                top: "50%",
+                transform: "translateY(-50%)"
+            }}
+            animate={{ 
+                opacity: 1,
+                top: "0%",
+                transform: "translateY(0%)",
+                transition: { 
+                    delay: 1, 
+                    duration: 1.5,
+                    ease: [0.22, 1, 0.36, 1] // Custom easing for smooth movement
+                } 
+            }}
+            className="absolute left-0 right-0 z-20 p-4 sm:p-6 md:p-8"
         >
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 justify-center sm:justify-start">
                 <span className="text-2xl sm:text-3xl md:text-4xl">🚀</span>
                 <a 
                   href="https://eqho.ai"
@@ -238,7 +272,7 @@ export const PixelRocketHero = ({ children }) => {
       <HeroNav />
       
       {/* Main content */}
-      <div className="relative z-10 text-center px-4 sm:px-6 max-w-6xl mx-auto">
+      <div className="relative z-10 text-center px-4 sm:px-6 max-w-6xl mx-auto mt-24 sm:mt-28 md:mt-32">
         <h1 
           className="text-2xl font-bold tracking-tighter text-white sm:text-4xl md:text-5xl lg:text-6xl mb-4 sm:mb-6" 
           style={{ fontFamily: "'Press Start 2P', system-ui", textShadow: '2px 2px 0px #ff00ff, -1px -1px 0px #00ffff' }}
