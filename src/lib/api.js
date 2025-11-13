@@ -33,6 +33,7 @@ export const FALLBACK_METRICS = {
  */
 export async function checkApiHealth() {
   try {
+    console.log('[Health Check] Checking backend API health...');
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
     
@@ -42,32 +43,41 @@ export async function checkApiHealth() {
     });
     
     clearTimeout(timeoutId);
-    return response.ok;
+    const isHealthy = response.ok;
+    console.log(`[Health Check] Backend API is ${isHealthy ? '✓ healthy' : '✗ unhealthy'}`);
+    return isHealthy;
   } catch (error) {
+    console.error('[Health Check] ✗ Failed to reach backend API:', error.message);
     return false;
   }
 }
 
 /**
- * Enhanced fetch with better error handling
+ * Enhanced fetch with better error handling and logging
  */
 export async function apiFetch(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
+  const requestId = Math.random().toString(36).substring(7);
+  
+  console.log(`[API ${requestId}] → ${options.method || 'GET'} ${endpoint}`);
   
   try {
     // Create timeout controller (only if no signal provided)
     const controller = options.signal ? null : new AbortController();
     const timeoutId = controller ? setTimeout(() => controller.abort(), 10000) : null; // 10 second timeout
     
+    const startTime = performance.now();
     const response = await fetch(url, {
       ...options,
       signal: controller?.signal || options.signal,
     });
+    const duration = (performance.now() - startTime).toFixed(2);
     
     if (timeoutId) clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
+      console.error(`[API ${requestId}] ✗ ${response.status} ${endpoint} (${duration}ms)`, errorText);
       throw new ApiError(
         `API returned ${response.status}: ${errorText}`,
         'http',
@@ -76,7 +86,9 @@ export async function apiFetch(endpoint, options = {}) {
       );
     }
 
-    return await response.json();
+    const data = await response.json();
+    console.log(`[API ${requestId}] ✓ ${response.status} ${endpoint} (${duration}ms)`);
+    return data;
   } catch (error) {
     // Re-throw ApiError as-is
     if (error instanceof ApiError) {
@@ -85,6 +97,7 @@ export async function apiFetch(endpoint, options = {}) {
 
     // Detect network errors
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      console.error(`[API ${requestId}] ✗ Network error: ${endpoint}`, error);
       throw new ApiError(
         'Cannot connect to backend API. Make sure the backend is running.',
         'network',
@@ -95,6 +108,7 @@ export async function apiFetch(endpoint, options = {}) {
 
     // Detect timeout errors
     if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+      console.error(`[API ${requestId}] ✗ Timeout: ${endpoint}`);
       throw new ApiError(
         'Request timed out. The backend may be slow or unavailable.',
         'timeout',
@@ -104,6 +118,7 @@ export async function apiFetch(endpoint, options = {}) {
     }
 
     // Generic error
+    console.error(`[API ${requestId}] ✗ Error: ${endpoint}`, error);
     throw new ApiError(
       error.message || 'Unknown error occurred',
       'unknown',

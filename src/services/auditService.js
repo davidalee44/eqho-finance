@@ -3,6 +3,8 @@
  * Handles logging of user actions for security and compliance
  */
 
+import { supabase } from '@/lib/supabase';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Action types enum
@@ -21,26 +23,64 @@ let logQueue = [];
 let flushTimeout = null;
 const BATCH_INTERVAL = 5000; // 5 seconds
 
+// Cached auth header for synchronous flushes
+let cachedAuthHeader = null;
+let authListenerInitialized = false;
+
+function updateCachedAuthHeader(session) {
+  if (session?.access_token) {
+    cachedAuthHeader = {
+      Authorization: `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    };
+  } else {
+    cachedAuthHeader = null;
+  }
+}
+
+async function ensureAuthCache() {
+  if (authListenerInitialized) {
+    return;
+  }
+
+  authListenerInitialized = true;
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    updateCachedAuthHeader(session);
+
+    supabase.auth.onAuthStateChange((_event, sessionData) => {
+      updateCachedAuthHeader(sessionData);
+    });
+  } catch (error) {
+    console.warn('Failed to initialize auth cache for audit logging:', error);
+  }
+}
+
+ensureAuthCache();
+
+function getCachedAuthHeader() {
+  return cachedAuthHeader;
+}
+
 /**
  * Get the authorization header with Supabase JWT token
  */
 async function getAuthHeader() {
-  try {
-    const { supabase } = await import('@/lib/supabase');
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.access_token) {
-      throw new Error('No active session');
-    }
-    
-    return {
-      'Authorization': `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json',
-    };
-  } catch (error) {
-    console.error('Error getting auth header:', error);
-    throw error;
+  await ensureAuthCache();
+
+  if (cachedAuthHeader) {
+    return cachedAuthHeader;
   }
+
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    throw new Error('No active session');
+  }
+
+  updateCachedAuthHeader(session);
+  return cachedAuthHeader;
 }
 
 /**
@@ -61,7 +101,7 @@ function getClientInfo() {
  */
 export async function logAction(actionType, actionData = {}) {
   if (!Object.values(ACTION_TYPES).includes(actionType)) {
-    console.warn(`Invalid action type: ${actionType}`);
+    console.warn(`[Audit] ✗ Invalid action type: ${actionType}`);
     return;
   }
   
@@ -76,55 +116,127 @@ export async function logAction(actionType, actionData = {}) {
   
   // Add to queue
   logQueue.push(logEntry);
+  console.log(`[Audit] Queued action: ${actionType} (queue size: ${logQueue.length})`);
   
   // Schedule batch flush if not already scheduled
   if (!flushTimeout) {
-    flushTimeout = setTimeout(flushLogs, BATCH_INTERVAL);
+    console.log(`[Audit] Scheduling batch flush in ${BATCH_INTERVAL}ms`);
+    flushTimeout = setTimeout(() => flushLogsAsync(), BATCH_INTERVAL);
   }
 }
 
-/**
- * Flush queued logs to backend
- */
-async function flushLogs() {
+function hasPendingLogs() {
+  return logQueue.length > 0;
+}
+
+async function sendLogsAsync(logs, headers, keepalive) {
+  await Promise.all(
+    logs.map(log =>
+      fetch(`${API_BASE_URL}/api/v1/audit/log`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(log),
+        keepalive,
+      })
+    )
+  );
+}
+
+function sendLogsSync(logs, headers) {
+  try {
+    for (const log of logs) {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_BASE_URL}/api/v1/audit/log`, false);
+      Object.entries(headers).forEach(([key, value]) => {
+        xhr.setRequestHeader(key, value);
+      });
+      xhr.send(JSON.stringify(log));
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        return false;
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Synchronous audit log send failed:', error);
+    return false;
+  }
+}
+
+async function flushLogsAsync({ keepalive = false } = {}) {
   if (logQueue.length === 0) {
     flushTimeout = null;
-    return;
+    return true;
   }
   
   const logsToSend = [...logQueue];
   logQueue = [];
   flushTimeout = null;
   
+  console.log(`[Audit] Flushing ${logsToSend.length} audit log(s) to backend${keepalive ? ' (keepalive)' : ''}...`);
+  
   try {
     const headers = await getAuthHeader();
-    
-    // Send each log entry (could be optimized with batch endpoint)
-    await Promise.all(
-      logsToSend.map(log =>
-        fetch(`${API_BASE_URL}/api/v1/audit/log`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(log),
-        })
-      )
-    );
+    await sendLogsAsync(logsToSend, headers, keepalive);
+    console.log(`[Audit] ✓ Successfully flushed ${logsToSend.length} audit log(s)`);
+    return true;
   } catch (error) {
-    console.error('Error flushing audit logs:', error);
-    // Re-queue failed logs
+    console.error(`[Audit] ✗ Error flushing audit logs:`, error);
     logQueue = [...logsToSend, ...logQueue];
+    console.warn(`[Audit] Re-queued ${logsToSend.length} failed audit log(s) (queue size: ${logQueue.length})`);
+    return false;
   }
+}
+
+function flushLogsSync() {
+  if (logQueue.length === 0) {
+    flushTimeout = null;
+    return true;
+  }
+
+  const headers = getCachedAuthHeader();
+  const logsToSend = [...logQueue];
+  logQueue = [];
+  flushTimeout = null;
+
+  if (!headers) {
+    console.warn('[Audit] ✗ Cannot flush audit logs synchronously without cached auth header');
+    logQueue = [...logsToSend, ...logQueue];
+    return false;
+  }
+
+  console.log(`[Audit] Flushing ${logsToSend.length} audit log(s) synchronously...`);
+  const success = sendLogsSync(logsToSend, headers);
+
+  if (!success) {
+    console.error(`[Audit] ✗ Synchronous flush failed, re-queuing ${logsToSend.length} log(s)`);
+    logQueue = [...logsToSend, ...logQueue];
+  } else {
+    console.log(`[Audit] ✓ Successfully flushed ${logsToSend.length} audit log(s) synchronously`);
+  }
+
+  return success;
 }
 
 /**
  * Immediately flush any pending logs
  * Useful before page unload
  */
-export async function flushPendingLogs() {
+export async function flushPendingLogs({ useKeepalive = false } = {}) {
   if (flushTimeout) {
     clearTimeout(flushTimeout);
+    flushTimeout = null;
   }
-  await flushLogs();
+  await flushLogsAsync({ keepalive: useKeepalive });
+}
+
+export function flushPendingLogsSync() {
+  if (flushTimeout) {
+    clearTimeout(flushTimeout);
+    flushTimeout = null;
+  }
+  return flushLogsSync();
 }
 
 /**
@@ -199,10 +311,42 @@ export async function exportAuditLogs(filters = {}) {
   }
 }
 
-// Flush logs before page unload
+// Flush logs when the page is about to become hidden or unload
 if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
-    flushPendingLogs();
-  });
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'hidden' && hasPendingLogs()) {
+      void flushPendingLogs({ useKeepalive: true });
+    }
+  };
+
+  const handleBeforeUnload = (event) => {
+    if (!hasPendingLogs()) {
+      return;
+    }
+
+    const success = flushPendingLogsSync();
+
+    if (!success) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  };
+
+  const handlePageHide = (event) => {
+    if (event.persisted) {
+      return;
+    }
+
+    if (hasPendingLogs()) {
+      const success = flushPendingLogsSync();
+      if (!success) {
+        void flushPendingLogs({ useKeepalive: true });
+      }
+    }
+  };
+
+  window.addEventListener('beforeunload', handleBeforeUnload);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  window.addEventListener('pagehide', handlePageHide);
 }
 
