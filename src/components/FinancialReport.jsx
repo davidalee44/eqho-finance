@@ -216,7 +216,7 @@ const FinancialReport = () => {
     recentTransactions
   );
 
-  // Prepare slides for presentation mode
+  // Prepare slides for presentation mode (investor-focused only)
   const slides = [
     {
       id: 'executive-summary',
@@ -231,42 +231,11 @@ const FinancialReport = () => {
         />
       ),
     },
-    {
-      id: 'key-insights',
-      title: 'Key Insights',
-      icon: <AlertCircle className="h-4 w-4" />,
-      component: <KeyInsightsSlide />,
-    },
-    {
-      id: 'spending-breakdown',
-      title: 'Spending Breakdown',
-      icon: <TrendingDown className="h-4 w-4" />,
-      component: <SpendingBreakdownSlide spendingCategories={spendingCategories} />,
-    },
-    {
-      id: 'cash-flow-forecast',
-      title: 'Cash Flow Forecast',
-      icon: <Calendar className="h-4 w-4" />,
-      component: (
-        <CashFlowForecastSlide
-          cashFlowForecast={cashFlowForecast}
-          showWithInvestment={showWithInvestment}
-          capitalRaise={capitalRaise}
-        />
-      ),
-    },
-    {
-      id: 'risk-analysis',
-      title: 'Risk Analysis',
-      icon: <AlertTriangle className="h-4 w-4" />,
-      component: <RiskAnalysisSlide risks={risks} />,
-    },
-    {
-      id: 'action-plan',
-      title: 'Action Plan',
-      icon: <TrendingUp className="h-4 w-4" />,
-      component: <ActionPlanSlide recommendations={recommendations} />,
-    },
+    // REMOVED: Key Insights - negative framing (burn rate crisis, labor crisis)
+    // REMOVED: Spending Breakdown - focuses on problems/waste
+    // REMOVED: Risk Analysis - critical warnings, problem-focused
+    // REMOVED: Action Plan - implies company needs rescue
+    // Note: These slides available in internal analysis mode if needed
   ];
 
   // Render presentation mode
