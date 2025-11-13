@@ -23,7 +23,7 @@
     ],
     "build": {
         "env": {
-            "VITE_API_URL": "https://api.eqho.ai",
+            "VITE_API_URL": "https://eqho-financials-production.up.railway.app",
             "VITE_PIPEDREAM_CONNECT_TOKEN": ""
         }
     }
