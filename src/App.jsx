@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ValidatedMetrics } from '@/components/ValidatedMetrics';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, ArrowUp, BarChart, ChevronLeft, ChevronRight, Code, DollarSign, GripVertical, Lock, Target, TrendingUp, Users, Zap, LayoutGrid, Presentation } from 'lucide-react';
+import { AlertTriangle, ArrowUp, BarChart, ChevronLeft, ChevronRight, Code, DollarSign, GripVertical, LayoutGrid, Lock, Presentation, Target, TrendingUp, Users, Zap } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { BentoDashboard } from './components/BentoDashboard';
 import { Footer } from './components/Footer';
@@ -157,11 +157,6 @@ const FinancialModelSlide = () => {
   // Calculate actual burn: lowest cash point relative to starting cash
   const lowestCash = Math.min(...projections.map(m => m.cash));
   const totalBurn = variables.startingCash - lowestCash;
-  
-  // Alternative: sum of negative NOI until breakeven
-  const burnUntilBreakeven = breakeven 
-    ? projections.slice(0, breakeven.month - 1).reduce((sum, m) => sum + (m.noi < 0 ? Math.abs(m.noi) : 0), 0)
-    : projections.reduce((sum, m) => sum + (m.noi < 0 ? Math.abs(m.noi) : 0), 0);
 
   return (
     <div className="mono-theme space-y-4 p-6 rounded-lg">
@@ -1517,20 +1512,25 @@ const App = ({ userProfile }) => {
       ];
       
       let cards = [];
+      let matchedSelector = null;
       for (const selector of selectors) {
         cards = Array.from(document.querySelectorAll(selector));
         if (cards.length > 0) {
+          matchedSelector = selector;
           console.log(`[App] Found ${cards.length} cards using selector: ${selector}`);
           break;
         }
       }
       
       // Filter out nested cards (cards inside other cards)
-      cards = cards.filter(card => {
-        // Check if card is inside another card
-        const parentCard = card.closest('.rounded-lg.border.bg-card');
-        return !parentCard || parentCard === card;
-      });
+      // Use the same selector that matched the cards to ensure correct filtering
+      if (matchedSelector && cards.length > 0) {
+        cards = cards.filter(card => {
+          // Check if card is inside another card using the same selector that found it
+          const parentCard = card.closest(matchedSelector);
+          return !parentCard || parentCard === card;
+        });
+      }
       
       if (cards.length === 0 && editMode) {
         console.warn('[App] No cards found for draggable functionality. Selectors tried:', selectors);
@@ -3518,7 +3518,7 @@ const App = ({ userProfile }) => {
       ) : (
         <>
           <div 
-            className={`flex-1 container mx-auto px-4 py-6 ${editMode ? 'edit-mode' : ''}`}
+            className={`flex-1 container mx-auto px-4 py-6 pb-24 ${editMode ? 'edit-mode' : ''}`}
             style={{ position: 'relative' }}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -3541,13 +3541,46 @@ const App = ({ userProfile }) => {
             </div>
             
             <div className="h-[calc(100vh-200px)] overflow-auto" style={{ position: 'relative' }}>
+              {/* Mid-Page Navigation Arrows */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={prevSlide}
+                disabled={currentSlide === 0}
+                className={`fixed left-4 top-1/2 -translate-y-1/2 w-16 h-16 rounded-full 
+                  shadow-2xl transition-all z-20 border-2
+                  ${currentSlide === 0
+                    ? 'opacity-30 cursor-not-allowed bg-background/60'
+                    : 'bg-background/95 hover:bg-primary hover:text-primary-foreground hover:scale-110 hover:shadow-3xl border-primary/20'
+                  }`}
+                aria-label="Previous slide"
+              >
+                <ChevronLeft className="w-10 h-10" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={nextSlide}
+                disabled={currentSlide === slides.length - 1}
+                className={`fixed right-4 top-1/2 -translate-y-1/2 w-16 h-16 rounded-full 
+                  shadow-2xl transition-all z-20 border-2
+                  ${currentSlide === slides.length - 1
+                    ? 'opacity-30 cursor-not-allowed bg-background/60'
+                    : 'bg-background/95 hover:bg-primary hover:text-primary-foreground hover:scale-110 hover:shadow-3xl border-primary/20'
+                  }`}
+                aria-label="Next slide"
+              >
+                <ChevronRight className="w-10 h-10" />
+              </Button>
+
               {slides[currentSlide].content}
             </div>
           </div>
 
-          {/* Navigation */}
-          <div className="border-t p-4">
-            <div className="container mx-auto flex items-center justify-between">
+          {/* Sticky Footer Navigation */}
+          <div className="fixed bottom-0 left-0 right-0 bg-background/98 backdrop-blur-md border-t shadow-lg z-30">
+            <div className="container mx-auto flex items-center justify-between p-4">
               <Button
                 variant="outline"
                 size="sm"
