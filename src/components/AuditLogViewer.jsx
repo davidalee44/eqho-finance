@@ -7,8 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/contexts/AuthContext';
 import { ACTION_TYPES, exportAuditLogs, fetchAuditLogs } from '@/services/auditService';
-import { Download, Filter, RefreshCw } from 'lucide-react';
+import { Download, Filter, RefreshCw, ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Footer } from './Footer';
 
 export function AuditLogViewer() {
   const { isAdmin } = useAuth();
@@ -96,17 +98,45 @@ export function AuditLogViewer() {
   
   if (!isAdmin) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Access Denied</CardTitle>
-          <CardDescription>You must be an administrator to view audit logs</CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="min-h-screen bg-background flex flex-col pb-12">
+        <div className="container mx-auto py-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Access Denied</CardTitle>
+              <CardDescription>You must be an administrator to view audit logs</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="outline">
+                <Link to="/">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Dashboard
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+        <Footer />
+      </div>
     );
   }
   
   return (
-    <div className="space-y-4 p-4 sm:p-6">
+    <div className="min-h-screen bg-background flex flex-col pb-12">
+      <div className="border-b bg-white/95 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/" className="flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Back to Dashboard</span>
+              </Link>
+            </Button>
+            <h1 className="text-xl font-semibold">Audit Logs</h1>
+            <Badge variant="outline">Admin Only</Badge>
+          </div>
+        </div>
+      </div>
+      <div className="container mx-auto py-8 px-4 sm:px-6 flex-1">
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -311,6 +341,8 @@ export function AuditLogViewer() {
           )}
         </CardContent>
       </Card>
+      </div>
+      <Footer />
     </div>
   );
 }

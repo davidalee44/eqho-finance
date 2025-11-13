@@ -2,12 +2,13 @@ import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 import { AppRouter } from './components/AppRouter'
 import PixelRocketHero from './components/PixelRocketHero'
 import { AuthProvider } from './contexts/AuthContext'
 import './index.css'
 import { supabase } from './lib/supabaseClient'
-import { logAction, ACTION_TYPES } from './services/auditService'
+import { ACTION_TYPES, logAction } from './services/auditService'
 
 function AuthWrapper() {
   const [session, setSession] = useState(null)
@@ -60,14 +61,14 @@ function AuthWrapper() {
   if (!session) {
     return (
       <PixelRocketHero>
-        <div className="w-full max-w-md mx-auto">
-          <div className="bg-black/60 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border-2 border-cyan-500/30">
+        <div className="w-screen px-2 md:w-full md:max-w-md md:mx-auto md:px-0">
+          <div className="bg-black/60 backdrop-blur-xl rounded-lg sm:rounded-xl md:rounded-2xl shadow-2xl p-6 sm:p-7 md:p-8 border-2 border-cyan-500/30">
             {/* Header */}
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-white mb-2">
+            <div className="text-center mb-4 sm:mb-6 md:mb-8">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
                 Eqho Investor Portal
               </h2>
-              <p className="text-cyan-300 text-sm">
+              <p className="text-cyan-300 text-xs sm:text-sm">
                 Secure Access Required
               </p>
             </div>
@@ -85,17 +86,28 @@ function AuthWrapper() {
                     color: 'white',
                     borderRadius: '0.75rem',
                     fontWeight: '700',
-                    padding: '12px',
+                    padding: '12px 16px',
+                    fontSize: '14px',
+                    minHeight: '44px', // iOS tap target minimum
+                    touchAction: 'manipulation', // Prevent zoom on tap
                   },
                   anchor: {
                     color: '#60a5fa',
+                    fontSize: '13px',
+                    padding: '8px',
+                    minHeight: '44px', // iOS tap target minimum
+                    display: 'inline-flex',
+                    alignItems: 'center',
                   },
                   input: {
                     background: 'rgba(17, 24, 39, 0.8)',
                     border: '2px solid #374151',
                     borderRadius: '0.75rem',
                     color: 'white',
-                    padding: '12px',
+                    padding: '12px 14px',
+                    fontSize: '16px', // Prevents iOS zoom on focus
+                    minHeight: '44px', // iOS tap target minimum
+                    touchAction: 'manipulation',
                   },
                   label: {
                     display: 'none',
@@ -103,13 +115,17 @@ function AuthWrapper() {
                   message: {
                     color: '#ef4444',
                     background: 'rgba(239, 68, 68, 0.1)',
-                    padding: '8px',
+                    padding: '8px 12px',
                     borderRadius: '0.5rem',
                     marginBottom: '12px',
+                    fontSize: '13px',
                   },
                   divider: {
                     background: 'rgba(156, 163, 175, 0.3)',
-                    margin: '20px 0',
+                    margin: '16px 0',
+                  },
+                  container: {
+                    gap: '12px',
                   },
                 },
                 variables: {
@@ -120,6 +136,10 @@ function AuthWrapper() {
                       brandButtonText: 'white',
                       defaultButtonBackground: 'rgba(55, 65, 81, 0.8)',
                       defaultButtonBackgroundHover: 'rgba(75, 85, 99, 0.8)',
+                    },
+                    radii: {
+                      borderRadiusButton: '0.75rem',
+                      inputBorderRadius: '0.75rem',
                     },
                   },
                 },
@@ -156,11 +176,11 @@ function AuthWrapper() {
             />
 
             {/* Footer */}
-            <div className="mt-6 text-center">
+            <div className="mt-4 sm:mt-6 text-center">
               <p className="text-gray-400 text-xs">
                 🛡️ Secure Access Only
               </p>
-              <p className="text-gray-600 text-xs mt-2">
+              <p className="text-gray-600 text-xs mt-1 sm:mt-2">
                 Powered by Supabase + Google OAuth
               </p>
             </div>
@@ -175,9 +195,11 @@ function AuthWrapper() {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AuthProvider>
-      <AuthWrapper />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <AuthWrapper />
+      </AuthProvider>
+    </BrowserRouter>
   </React.StrictMode>,
 )
 

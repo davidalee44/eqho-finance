@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import App from '../App'
+import { AuditLogViewer } from './AuditLogViewer'
+import { useAuth } from '../contexts/AuthContext'
 
 function UnauthorizedAccess() {
   return (
@@ -41,7 +44,7 @@ export function AppRouter() {
         if (userError) throw userError
         
         if (user) {
-          // First check if user_profiles table exists by trying to query it
+          // Try to fetch user profile from database (graceful fallback if table doesn't exist)
           const { data: profile, error: profileError } = await supabase
             .from('user_profiles')
             .select('role, app_access, company, full_name')
@@ -49,9 +52,10 @@ export function AppRouter() {
             .single()
           
           if (profileError) {
-            // Table doesn't exist yet or user doesn't have profile
-            // Default to investor role for now
-            console.warn('User profile not found, defaulting to investor role:', profileError)
+            // Profile table doesn't exist or user not found - use metadata from auth
+            if (profileError.code !== 'PGRST116' && profileError.message && !profileError.message.includes('404')) {
+              console.info('[Auth] Using user metadata (profile table not configured):', user.user_metadata?.role || 'investor')
+            }
             setUserProfile({
               email: user.email,
               name: user.user_metadata?.name || user.user_metadata?.full_name,
@@ -68,7 +72,7 @@ export function AppRouter() {
             })
           }
 
-          // Log access (optional - will fail if table doesn't exist yet)
+          // Optional: Log access if RPC function exists (silent fail if not configured)
           try {
             await supabase.rpc('log_app_access', {
               app_name: 'investor-deck',
@@ -77,7 +81,10 @@ export function AppRouter() {
               user_agent: navigator.userAgent
             })
           } catch (e) {
-            console.warn('Access logging not available yet:', e)
+            // Silently fail - this is optional logging
+            if (e.message && !e.message.includes('404') && !e.message.includes('not found')) {
+              console.debug('[Access Log] Optional logging not configured')
+            }
           }
         }
         
@@ -126,13 +133,36 @@ export function AppRouter() {
   const hasInvestorAccess = 
     userProfile.role === 'investor' || 
     userProfile.role === 'admin' ||
+    userProfile.role === 'super_admin' ||
     userProfile.app_access?.includes('investor-deck')
 
   if (!hasInvestorAccess) {
     return <UnauthorizedAccess />
   }
 
-  // Show investor deck
-  return <App userProfile={userProfile} />
+  // Protected route component for admin-only routes
+  function AdminRoute({ children }) {
+    const { isAdmin } = useAuth()
+    if (!isAdmin) {
+      return <Navigate to="/" replace />
+    }
+    return children
+  }
+
+  // Show routes
+  return (
+    <Routes>
+      <Route path="/" element={<App userProfile={userProfile} />} />
+      <Route 
+        path="/audit-logs" 
+        element={
+          <AdminRoute>
+            <AuditLogViewer />
+          </AdminRoute>
+        } 
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
 }
 

@@ -1,5 +1,6 @@
-import { isAdmin as checkIsAdmin, getUserRole, supabase } from '@/lib/supabase';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { isAdmin as checkIsAdmin, getUserRole } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 const AuthContext = createContext({
   user: null,
