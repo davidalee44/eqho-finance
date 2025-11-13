@@ -165,7 +165,7 @@ export const MagneticCursor = ({
           background: ${cursorColor};
           border-radius: 50%;
           pointer-events: none;
-          z-index: 9998;
+          z-index: 99999;
         `;
         document.body.appendChild(particle);
 
