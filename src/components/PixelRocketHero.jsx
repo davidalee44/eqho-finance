@@ -91,15 +91,25 @@ const PixelVoyagerCanvas = () => {
     rocket.add(cockpit);
     scene.add(rocket);
 
-    // --- Rocket Trail (Object Pooling) - Reduced on mobile for performance ---
+    // --- Rocket Flame (Object Pooling with Gravity) - Reduced on mobile for performance ---
     const trailPool = [];
     let trailIndex = 0;
     const trailSize = isMobile ? 100 : 200; // Half the particles on mobile
     const trailGeo = new THREE.BoxGeometry(pixelSize * 1.5, pixelSize * 1.5, pixelSize * 1.5);
+    
+    // Fire colors: orange, red, yellow for realistic rocket flame
+    const fireColors = [0xff6600, 0xff3300, 0xff9900, 0xffaa00, 0xff0000];
+    
     for(let i=0; i<trailSize; i++) {
-        const trailMat = new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0xff00ff : 0xee82ee });
+        const flameColor = fireColors[Math.floor(Math.random() * fireColors.length)];
+        const trailMat = new THREE.MeshBasicMaterial({ 
+            color: flameColor,
+            transparent: true,
+            opacity: 0.9
+        });
         const particle = new THREE.Mesh(trailGeo, trailMat);
         particle.visible = false;
+        particle.velocity = new THREE.Vector3(); // For gravity
         scene.add(particle);
         trailPool.push(particle);
     }
@@ -143,23 +153,40 @@ const PixelVoyagerCanvas = () => {
         rocket.rotation.y = (targetPosition.x - rocket.position.x) * 0.15; // Increased rotation speed
         rocket.rotation.x = -(targetPosition.y - rocket.position.y) * 0.15;
 
-        // Emit trail particles (reduced rate on mobile)
-        const emissionThreshold = isMobile ? 0.5 : 0.3; // Emit less frequently on mobile
+        // Emit flame particles with gravity effect (reduced rate on mobile)
+        const emissionThreshold = isMobile ? 0.5 : 0.2; // More frequent for better flame effect
         if(Math.random() > emissionThreshold) {
             const particle = trailPool[trailIndex];
             particle.position.copy(rocket.position);
-            particle.position.y -= 0.7;
+            particle.position.y -= 0.9; // Start below rocket
+            particle.position.x += (Math.random() - 0.5) * 0.3; // Slight horizontal spread
             particle.scale.setScalar(1);
             particle.visible = true;
             particle.life = 1;
+            // Initial velocity: slight upward thrust then gravity pulls down
+            particle.velocity.set(
+                (Math.random() - 0.5) * 0.5, // Random horizontal
+                Math.random() * 0.3, // Slight upward
+                0
+            );
             trailIndex = (trailIndex + 1) % trailSize;
         }
         
-        // Animate trail
+        // Animate flame with gravity and fade
+        const gravity = -2.5; // Gravity pulls flame down
         trailPool.forEach(p => {
             if(p.visible) {
-                p.life -= delta * 1.5;
-                p.scale.setScalar(p.life);
+                // Apply physics
+                p.velocity.y += gravity * delta; // Gravity acceleration
+                p.position.add(p.velocity.clone().multiplyScalar(delta * 3));
+                
+                // Fade and shrink over time
+                p.life -= delta * 2; // Faster fade for flame effect
+                p.scale.setScalar(p.life * 0.8); // Shrink as it fades
+                
+                // Update opacity for fade effect
+                p.material.opacity = p.life * 0.9;
+                
                 if(p.life <= 0) p.visible = false;
             }
         });
