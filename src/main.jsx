@@ -57,12 +57,13 @@ function AuthWrapper() {
                 theme: ThemeSupa,
                 style: {
                   button: {
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    background: 'rgba(59, 130, 246, 0.2)',
+                    backdropFilter: 'blur(10px)',
+                    border: '2px solid rgba(59, 130, 246, 0.5)',
                     color: 'white',
                     borderRadius: '0.75rem',
                     fontWeight: '700',
                     padding: '12px',
-                    border: 'none',
                   },
                   anchor: {
                     color: '#60a5fa',
@@ -107,14 +108,14 @@ function AuthWrapper() {
                     email_label: 'Email Address',
                     password_label: 'Password',
                     button_label: '🚀 Launch Mission',
-                    social_provider_text: '{{provider}} Mission Control',
+                    social_provider_text: 'Sign in with {{provider}}',
                     link_text: "New to Eqho? Create Account",
                   },
                   sign_up: {
                     email_label: 'Email Address',
                     password_label: 'Create Password',
                     button_label: '🚀 Create Eqho Account',
-                    social_provider_text: 'Continue with {{provider}}',
+                    social_provider_text: 'Sign in with {{provider}}',
                     link_text: 'Already have clearance? Sign in',
                   },
                 },
