@@ -1507,14 +1507,51 @@ const App = ({ userProfile }) => {
   
   // Automatically add draggable-card class to all Card components
   useEffect(() => {
-    const cards = document.querySelectorAll('.rounded-lg.border.bg-card');
-    cards.forEach(card => {
-      if (editMode) {
-        card.classList.add('draggable-card');
-      } else {
-        card.classList.remove('draggable-card');
+    // Use requestAnimationFrame to ensure DOM is updated after slide change
+    const rafId = requestAnimationFrame(() => {
+      // Try multiple selectors to find cards more reliably
+      const selectors = [
+        '.rounded-lg.border.bg-card', // Primary selector
+        '[class*="rounded-lg"][class*="border"][class*="bg-card"]', // More flexible
+        '.bg-card.rounded-lg.border', // Alternative order
+      ];
+      
+      let cards = [];
+      for (const selector of selectors) {
+        cards = Array.from(document.querySelectorAll(selector));
+        if (cards.length > 0) {
+          console.log(`[App] Found ${cards.length} cards using selector: ${selector}`);
+          break;
+        }
+      }
+      
+      // Filter out nested cards (cards inside other cards)
+      cards = cards.filter(card => {
+        // Check if card is inside another card
+        const parentCard = card.closest('.rounded-lg.border.bg-card');
+        return !parentCard || parentCard === card;
+      });
+      
+      if (cards.length === 0 && editMode) {
+        console.warn('[App] No cards found for draggable functionality. Selectors tried:', selectors);
+      }
+      
+      cards.forEach(card => {
+        if (editMode) {
+          card.classList.add('draggable-card');
+        } else {
+          card.classList.remove('draggable-card');
+        }
+      });
+      
+      if (editMode && cards.length > 0) {
+        console.log(`[App] ${cards.length} cards marked as draggable`);
       }
     });
+    
+    return () => {
+      cancelAnimationFrame(rafId);
+    };
   }, [editMode, currentSlide]);
   
   const resetLayout = () => {

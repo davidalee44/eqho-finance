@@ -26,6 +26,7 @@ const BentoCard = ({
 }) => (
   <div
     key={name}
+    data-magnetic
     className={cn(
       "group relative col-span-3 flex flex-col justify-between overflow-hidden rounded-xl",
       // light styles
