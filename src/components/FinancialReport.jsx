@@ -232,6 +232,18 @@ const FinancialReport = () => {
         />
       ),
     },
+    {
+      id: 'cash-flow-forecast',
+      title: '90-Day Forecast',
+      icon: <Calendar className="h-4 w-4" />,
+      component: (
+        <CashFlowForecastSlide
+          cashFlowForecast={cashFlowForecast}
+          showWithInvestment={showWithInvestment}
+          capitalRaise={capitalRaise}
+        />
+      ),
+    },
     // REMOVED: Key Insights - negative framing (burn rate crisis, labor crisis)
     // REMOVED: Spending Breakdown - focuses on problems/waste
     // REMOVED: Risk Analysis - critical warnings, problem-focused
