@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { motion, useMotionValue, animate } from 'framer-motion';
+import { animate, motion, useMotionValue } from 'framer-motion';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { Button } from './ui/button';
+import { useEffect, useRef, useState } from 'react';
 import { SlideThumbnails } from './SlideThumbnails';
+import { Button } from './ui/button';
 
 /**
  * ReportCarousel - Presentation-style slideshow for financial reports
