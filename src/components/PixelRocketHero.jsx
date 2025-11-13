@@ -94,21 +94,7 @@ const PixelVoyagerCanvas = () => {
         trailPool.push(particle);
     }
     
-    // --- Crypto Coins ---
-    const coinGroup = new THREE.Group();
-    const coinMat = new THREE.MeshStandardMaterial({ color: 0xffd700, flatShading: true });
-    for(let i=0; i<20; i++) {
-        const coin = new THREE.Group();
-        for(let p=0; p<15; p++) {
-            const pixel = new THREE.Mesh(pixelGeo, coinMat);
-            const angle = (p/15) * Math.PI * 2;
-            pixel.position.set(Math.cos(angle) * 0.4, Math.sin(angle) * 0.4, 0);
-            coin.add(pixel);
-        }
-        coin.position.set((Math.random() - 0.5) * 40, (Math.random() - 0.5) * 30, (Math.random() - 0.5) * 20);
-        coinGroup.add(coin);
-    }
-    scene.add(coinGroup);
+    // Coins removed for cleaner aesthetic
 
     // Light
     const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -152,9 +138,7 @@ const PixelVoyagerCanvas = () => {
             }
         });
 
-        coinGroup.children.forEach((coin, i) => {
-            coin.rotation.z = elapsedTime * (i % 2 === 0 ? 1 : -1);
-        });
+        // Coin animation removed
         
         composer.render();
     };
@@ -256,9 +240,9 @@ export const PixelRocketHero = ({ children }) => {
                   custom={i} 
                   initial={{ opacity: 0, y: 50 }} 
                   animate={textControls} 
-                  style={{ display: 'inline-block', marginRight: char === ' ' ? '0.5em' : '0' }}
+                  style={{ display: 'inline-block' }}
                 >
-                    {char === ' ' ? '\u00A0' : char}
+                    {char}
                 </motion.span>
             ))}
         </h1>
