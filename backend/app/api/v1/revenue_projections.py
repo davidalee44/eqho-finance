@@ -68,7 +68,7 @@ async def get_current_month_projections():
                 monthly = 0
             
             sub_mrr += monthly
-            sub_amount = amount
+            sub_amount += amount  # BUG FIX: Accumulate for multi-item subscriptions
             interval_info = {
                 "interval": interval,
                 "interval_count": interval_count
@@ -203,7 +203,7 @@ async def get_month_detail(
                 monthly = 0
             
             sub_mrr += monthly
-            sub_amount = amount
+            sub_amount += amount  # BUG FIX: Accumulate for multi-item subscriptions
             interval_info = {
                 "interval": interval,
                 "interval_count": interval_count
@@ -311,12 +311,19 @@ async def get_quarterly_revenue_forecast(
                             monthly = 0
                         
                         sub_mrr += monthly
-                        sub_amount = amount
+                        sub_amount += amount  # BUG FIX: Accumulate for multi-item subscriptions
                     
                     quarter_total += sub_amount
                     quarter_mrr += sub_mrr
         
         quarter_name = f"Q{((quarter_start_month - 1) // 3) + 1} {quarter_year}"
+        
+        # BUG FIX: Handle year wraparound for quarter end month
+        end_month = quarter_start_month + 2
+        end_year = quarter_year
+        if end_month > 12:
+            end_month -= 12
+            end_year += 1
         
         quarterly_data.append({
             "quarter": quarter_name,
@@ -325,7 +332,7 @@ async def get_quarterly_revenue_forecast(
             "projected_invoice_amount": round(quarter_total, 2),
             "average_mrr": round(quarter_mrr / 3, 2),  # Average over 3 months
             "months": f"{datetime(quarter_year, quarter_start_month, 1).strftime('%b')}-"
-                      f"{datetime(quarter_year, min(quarter_start_month + 2, 12), 1).strftime('%b')}"
+                      f"{datetime(end_year, end_month, 1).strftime('%b')}"
         })
     
     return {
@@ -384,7 +391,7 @@ async def get_annual_revenue_forecast():
                         monthly = 0
                     
                     sub_mrr += monthly
-                    sub_amount = amount
+                    sub_amount += amount  # BUG FIX: Accumulate for multi-item subscriptions
                 
                 month_total += sub_amount
                 month_customer_count += 1
