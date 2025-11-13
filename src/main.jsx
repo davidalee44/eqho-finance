@@ -181,7 +181,7 @@ function AuthWrapper() {
                 🛡️ Secure Access Only
               </p>
               <p className="text-gray-600 text-xs mt-1 sm:mt-2">
-                Powered by Supabase + Google OAuth
+                Powered by Eqho, Inc
               </p>
             </div>
           </div>
