@@ -1,5 +1,4 @@
-import { ArrowRightIcon } from "@radix-ui/react-icons";
-
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -70,7 +69,7 @@ const BentoCard = ({
           }}
         >
           {cta}
-          <ArrowRightIcon className="ml-2 h-4 w-4" />
+          <ArrowRight className="ml-2 h-4 w-4" />
         </a>
       </Button>
     </div>

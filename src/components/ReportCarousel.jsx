@@ -165,48 +165,51 @@ export const ReportCarousel = ({ slides, onExit, autoAdvanceInterval = null }) =
             ))}
           </motion.div>
 
-          {/* Previous Button */}
+          {/* Previous Button - Middle Left */}
           <Button
             disabled={index === 0}
             onClick={handlePrevious}
             variant="ghost"
             size="icon"
-            className={`absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full shadow-lg transition-all z-10
+            className={`absolute left-8 top-1/2 -translate-y-1/2 w-16 h-16 rounded-full shadow-2xl transition-all z-20
               ${
                 index === 0
-                  ? 'opacity-40 cursor-not-allowed'
-                  : 'bg-background/80 hover:bg-background hover:scale-110'
+                  ? 'opacity-20 cursor-not-allowed'
+                  : 'bg-background/90 hover:bg-background hover:scale-125 hover:shadow-3xl'
               }`}
             aria-label="Previous slide"
           >
-            <ChevronLeft className="w-6 h-6" />
+            <ChevronLeft className="w-10 h-10" />
           </Button>
 
-          {/* Next Button */}
+          {/* Next Button - Middle Right */}
           <Button
             disabled={index === slides.length - 1}
             onClick={handleNext}
             variant="ghost"
             size="icon"
-            className={`absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full shadow-lg transition-all z-10
+            className={`absolute right-8 top-1/2 -translate-y-1/2 w-16 h-16 rounded-full shadow-2xl transition-all z-20
               ${
                 index === slides.length - 1
-                  ? 'opacity-40 cursor-not-allowed'
-                  : 'bg-background/80 hover:bg-background hover:scale-110'
+                  ? 'opacity-20 cursor-not-allowed'
+                  : 'bg-background/90 hover:bg-background hover:scale-125 hover:shadow-3xl'
               }`}
             aria-label="Next slide"
           >
-            <ChevronRight className="w-6 h-6" />
+            <ChevronRight className="w-10 h-10" />
           </Button>
-
-          {/* Slide Counter */}
-          <div className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-full text-sm font-medium z-10">
-            {index + 1} / {slides.length}
-          </div>
         </div>
 
-        {/* Thumbnail Navigator */}
-        <div className="border-t bg-background/95 backdrop-blur">
+        {/* Footer - Always Visible */}
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-background/98 backdrop-blur-md border-t shadow-lg">
+          {/* Slide Counter - Prominent */}
+          <div className="flex items-center justify-center py-3 border-b">
+            <div className="bg-primary/10 text-primary px-6 py-2 rounded-full text-base font-semibold">
+              Slide {index + 1} of {slides.length}
+            </div>
+          </div>
+          
+          {/* Thumbnail Navigator */}
           <SlideThumbnails
             slides={slides}
             index={index}

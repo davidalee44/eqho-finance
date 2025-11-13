@@ -1,0 +1,6 @@
+# Additional requirements for the data validator TUI
+textual==0.81.0
+rich==13.7.1
+httpx==0.27.0
+python-dotenv==1.0.0
+

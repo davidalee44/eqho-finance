@@ -1,4 +1,4 @@
-# 🔒 Setting Up Clerk Authentication
+# 🔒 Setting Up Clerk Authentication - DEPRECATED
 
 ## IMMEDIATE PROTECTION (5 minutes)
 
@@ -113,6 +113,7 @@ The authentication is already integrated into the codebase:
 - ✅ Environment variables configured
 
 **All you need to do is:**
+
 1. Create Clerk account
 2. Get publishable key
 3. Add to Vercel environment variables
@@ -186,4 +187,3 @@ If you need **instant protection** before Clerk setup:
 ---
 
 **⚠️ IMPORTANT:** Until you complete Clerk setup, use Vercel Password Protection for immediate security!
-

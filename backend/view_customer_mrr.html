@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer MRR Breakdown - Eqho</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header .stats {
+            display: flex;
+            gap: 40px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(255,255,255,0.2);
+            padding: 15px 25px;
+            border-radius: 8px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        
+        .controls {
+            padding: 20px 30px;
+            background: #fafafa;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 15px;
+        }
+        
+        select, input, button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .tier-section {
+            margin-bottom: 30px;
+        }
+        
+        .tier-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .tier-header:hover {
+            background: #e9ecef;
+        }
+        
+        .tier-header.enterprise {
+            border-left-color: #dc3545;
+        }
+        
+        .tier-header.high-value {
+            border-left-color: #fd7e14;
+        }
+        
+        .tier-header.standard {
+            border-left-color: #20c997;
+        }
+        
+        .tier-header.growth {
+            border-left-color: #0dcaf0;
+        }
+        
+        .tier-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .tier-stats {
+            display: flex;
+            gap: 30px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .customer-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .customer-table.expanded {
+            display: table;
+        }
+        
+        .customer-table th {
+            background: #f1f3f5;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .customer-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 14px;
+        }
+        
+        .customer-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .rank {
+            font-weight: 600;
+            color: #667eea;
+            width: 50px;
+        }
+        
+        .customer-id {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #495057;
+        }
+        
+        .mrr {
+            font-weight: 600;
+            color: #28a745;
+            text-align: right;
+        }
+        
+        .amount {
+            text-align: right;
+            color: #6c757d;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .badge-month {
+            background: #e7f5ff;
+            color: #0c8599;
+        }
+        
+        .badge-year {
+            background: #fff3cd;
+            color: #997404;
+        }
+        
+        .badge-week {
+            background: #e8daef;
+            color: #6c3483;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #999;
+        }
+        
+        .expand-icon {
+            font-size: 18px;
+            transition: transform 0.3s;
+        }
+        
+        .expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Customer MRR Breakdown</h1>
+            <p>Detailed subscription analysis - All 111 paying customers</p>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-label">Total MRR</div>
+                    <div class="stat-value" id="total-mrr">Loading...</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Paying Customers</div>
+                    <div class="stat-value" id="total-customers">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Average MRR</div>
+                    <div class="stat-value" id="avg-mrr">-</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="filters">
+                <input type="number" id="min-mrr" placeholder="Min MRR" style="width: 120px">
+                <select id="sort-by">
+                    <option value="mrr">Sort by MRR</option>
+                    <option value="customer">Sort by Customer ID</option>
+                </select>
+            </div>
+            <button onclick="exportToCSV()">Download CSV</button>
+        </div>
+        
+        <div class="content" id="content">
+            <div class="loading">Loading customer data...</div>
+        </div>
+    </div>
+
+    <script>
+        let customerData = [];
+        
+        async function loadData() {
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/customer-mrr/summary-by-tier');
+                const data = await response.json();
+                
+                // Update stats
+                document.getElementById('total-mrr').textContent = '$' + data.total_mrr.toLocaleString();
+                document.getElementById('total-customers').textContent = data.total_customers;
+                const avgMrr = data.total_mrr / data.total_customers;
+                document.getElementById('avg-mrr').textContent = '$' + avgMrr.toLocaleString(undefined, {maximumFractionDigits: 0});
+                
+                // Render tiers
+                renderTiers(data.tiers);
+                
+            } catch (error) {
+                document.getElementById('content').innerHTML = 
+                    '<div class="loading">❌ Error loading data. Make sure backend is running at http://localhost:8000</div>';
+                console.error('Error:', error);
+            }
+        }
+        
+        function renderTiers(tiers) {
+            const content = document.getElementById('content');
+            content.innerHTML = '';
+            
+            const tierClasses = {
+                'Enterprise ($5K+)': 'enterprise',
+                'High-Value ($1K-$5K)': 'high-value',
+                'Standard ($500-$1K)': 'standard',
+                'Growth ($100-$500)': 'growth',
+                'Starter (<$100)': 'starter'
+            };
+            
+            tiers.forEach((tier, tierIndex) => {
+                const section = document.createElement('div');
+                section.className = 'tier-section';
+                
+                const tierClass = tierClasses[tier.tier] || 'standard';
+                
+                section.innerHTML = `
+                    <div class="tier-header ${tierClass}" onclick="toggleTier(${tierIndex})">
+                        <div>
+                            <div class="tier-title">${tier.tier}</div>
+                        </div>
+                        <div class="tier-stats">
+                            <span><strong>${tier.customer_count}</strong> customers</span>
+                            <span><strong>$${tier.total_mrr.toLocaleString()}</strong> MRR</span>
+                            <span><strong>$${tier.average_mrr.toLocaleString()}</strong> avg</span>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                    </div>
+                    
+                    <table class="customer-table" id="tier-${tierIndex}">
+                        <thead>
+                            <tr>
+                                <th class="rank">#</th>
+                                <th>Customer ID</th>
+                                <th style="text-align: right">MRR</th>
+                                <th>Subscription ID</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tier.customers.map((customer, idx) => `
+                                <tr>
+                                    <td class="rank">${idx + 1}</td>
+                                    <td class="customer-id">${customer.customer_id}</td>
+                                    <td class="mrr">$${customer.mrr.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    <td class="customer-id">${customer.customer_id.substring(0, 20)}...</td>
+                                    <td><span class="badge badge-month">Active</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+                
+                content.appendChild(section);
+            });
+        }
+        
+        function toggleTier(tierIndex) {
+            const table = document.getElementById(`tier-${tierIndex}`);
+            const header = table.previousElementSibling;
+            
+            table.classList.toggle('expanded');
+            header.classList.toggle('expanded');
+        }
+        
+        async function exportToCSV() {
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/customer-mrr/export-csv');
+                const data = await response.json();
+                
+                // Create download
+                const blob = new Blob([data.csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `customer_mrr_breakdown_${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+            } catch (error) {
+                alert('Error exporting CSV: ' + error.message);
+            }
+        }
+        
+        // Load data on page load
+        loadData();
+    </script>
+</body>
+</html>
+

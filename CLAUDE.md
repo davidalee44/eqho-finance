@@ -15,15 +15,20 @@ npm run dev             # Start Vite dev server (http://localhost:5173)
 npm run build           # Production build to dist/
 npm run preview         # Preview production build
 npm run lint            # Run ESLint
+npm test                # Run Vitest tests
+npm run test:ui         # Run tests with UI
+npm run test:run        # Run tests once (CI mode)
+npm run test:coverage   # Generate coverage report
 ```
 
 ### Backend (FastAPI)
 ```bash
 cd backend
 uv venv                              # Create virtual environment
-source .venv/bin/activate            # Activate venv
+source .venv/bin/activate            # Activate venv (macOS/Linux)
 uv pip install -r requirements.txt   # Install dependencies
 uvicorn app.main:app --reload --port 8000  # Start dev server
+pytest tests/                        # Run backend tests (when available)
 ```
 
 ### Makefile (Recommended)
@@ -33,8 +38,18 @@ make dev                # Run both frontend and backend in parallel
 make dev-frontend       # Frontend only
 make dev-backend        # Backend only
 make build             # Build for production
-make test              # Run all tests
+make test              # Run all tests (frontend lint + backend tests)
 make clean             # Clean build artifacts
+make clean-all         # Remove all dependencies
+```
+
+### Docker Commands
+```bash
+make docker-up          # Start MongoDB 8 + Backend API
+make docker-down        # Stop all services
+make docker-logs        # View Docker logs
+make docker-mongodb     # Start MongoDB only
+make docker-clean       # Remove volumes (deletes data)
 ```
 
 ## Architecture
@@ -45,28 +60,56 @@ make clean             # Clean build artifacts
 - `App.jsx` - Financial model slide with interactive projections calculator
 - `FinancialReport.jsx` - Multi-slide report with carousel presentation mode
 - `AppRouter.jsx` - Route management and auth-based navigation
-- `PixelRocketHero.jsx` - Landing page component
+- `PixelRocketHero.jsx` - Landing page component with 3D animations
+- `BentoDashboard.jsx` - Bento grid layout dashboard
+- `ComprehensiveMetrics.jsx` - Main metrics dashboard
 
 **Presentation System:**
 - `ReportCarousel.jsx` - Swipeable slide navigation with touch/keyboard support
 - `ReportSlide.jsx` - Individual slide wrapper with animations
 - `SlideThumbnails.jsx` - Slide preview navigation
-- `components/slides/*` - Individual slide components (ExecutiveSummary, SpendingBreakdown, CashFlowForecast, etc.)
+- `components/slides/` - Individual slide components:
+  - `ExecutiveSummarySlide.jsx`
+  - `SpendingBreakdownSlide.jsx`
+  - `CashFlowForecastSlide.jsx`
+  - `RiskAnalysisSlide.jsx`
+  - `KeyInsightsSlide.jsx`
+  - `ActionPlanSlide.jsx`
+
+**Metrics & Data:**
+- `ValidatedMetrics.jsx` - Metrics validation and display
+- `MRRMetrics.jsx` - Monthly Recurring Revenue tracking
+- `OctoberRevenueBreakdown.jsx` - Revenue breakdown visualization
+- `DynamicFinancialInsights.jsx` - AI-generated financial insights
+- `DraggableCard.jsx` - Drag-and-drop card component
 
 **Core Services:**
 - `services/layoutService.js` - Dashboard card layout persistence (admin only)
 - `services/auditService.js` - Action logging with batched writes and sync/async flush
 - `lib/supabase.js` - Supabase client, auth helpers, RLS-aware queries
+- `lib/supabaseClient.js` - Alternative Supabase client wrapper
+- `lib/api.js` - API client with auth headers
+- `lib/stripeData.js` - Stripe data integration
+- `lib/exportUtils.js` - Excel/CSV export utilities
+- `lib/screenshotUtils.js` - Screenshot generation with html2canvas
+- `lib/generateFinancialInsights.js` - Financial analysis generation
 
 **State Management:**
 - `contexts/AuthContext.jsx` - User authentication, role management, admin checks
 - `hooks/useDraggableCards.js` - Drag-and-drop card positioning
 
 **Data Features:**
-- Version control system with snapshot creation/restore
+- Version control system with snapshot creation/restore (`VersionControl.jsx`)
 - Real-time Stripe data integration for metrics
 - Financial model calculator with localStorage persistence
-- Export functionality (screenshots, Excel, CSV)
+- Export functionality (screenshots, Excel, CSV) via `exportUtils.js`
+- Audit logging with viewer component (`AuditLogViewer.jsx`)
+- User profile management (`UserProfile.jsx`)
+
+**UI Components Library:**
+Custom shadcn/ui components in `components/ui/`:
+- Standard: `button`, `card`, `input`, `label`, `table`, `tabs`, `badge`, `accordion`, `separator`, `progress`, `select`, `alert-dialog`
+- Custom: `currency-input`, `percentage-input`, `magnetic-cursor`, `tour`, `img-sphere`, `bento-grid`
 
 ### Backend Structure (`backend/app/`)
 
@@ -85,11 +128,20 @@ make clean             # Clean build artifacts
 - `cache_service.py` - In-memory cache with stats
 - `supabase_service.py` - Supabase connection and queries
 - `snapshot_service.py` - Snapshot CRUD with RLS
+- `email_service.py` - Email service integration
 - `auth.py` - JWT validation and role-based access control
 
 **Configuration:**
 - `core/config.py` - Pydantic settings for environment variables
+- `main.py` - FastAPI app initialization with CORS, routes, middleware
 - RLS enforced on all Supabase queries with user_id filtering
+
+**Dependencies:**
+- FastAPI 0.104.1 with Uvicorn
+- Stripe 7.4.0 for payment data
+- Supabase 2.10.0 for database/auth
+- Pydantic 2.5.0 for data validation
+- httpx 0.27.0 for async HTTP requests
 
 ### Database (Supabase PostgreSQL)
 
@@ -212,12 +264,31 @@ export const Component = ({ prop1, prop2 }) => {
 
 ## Testing
 
+### Frontend Tests (Vitest)
 ```bash
-# Frontend linting
-npm run lint
+npm test                # Watch mode
+npm run test:run        # Single run (CI mode)
+npm run test:ui         # Interactive UI
+npm run test:coverage   # Generate coverage report
+```
 
-# Backend tests (when available)
-cd backend && pytest tests/
+Test files located in `src/**/__tests__/`:
+- Component tests: `src/components/ui/__tests__/`
+- Service tests: `src/services/__tests__/`
+- Hook tests: `src/hooks/__tests__/`
+- Context tests: `src/contexts/__tests__/`
+- Utility tests: `src/lib/__tests__/`
+
+Configuration: `vitest.config.js`
+- Environment: jsdom
+- Setup file: `src/test/setup.js`
+- Coverage: v8 provider
+
+### Backend Tests (pytest)
+```bash
+cd backend
+source .venv/bin/activate
+pytest tests/           # When tests are available
 ```
 
 ## Security Considerations
@@ -248,6 +319,9 @@ import { Button } from '@/components/ui/button';  // Resolves to src/components/
 - shadcn/ui components in `src/components/ui/`
 - CSS variables for theming in `src/index.css`
 - Dark mode support via `darkMode: ["class"]` in Tailwind config
+- Custom animations: framer-motion, GSAP, three.js
+- 3D components: `img-sphere.jsx` (3D image sphere with Three.js)
+- Layout: `bento-grid.jsx` for dashboard layouts
 
 ## Commit Message Convention
 
@@ -257,3 +331,17 @@ Follow conventional commits format from `.cursorrules`:
 - `docs: update API reference`
 - `refactor: extract payment processing logic`
 - `test: add integration tests for webhooks`
+
+DO NOT include attribution to Claude in commits or PRs per user's global instructions.
+
+## Code Documentation Standards
+
+From `.cursorrules`:
+- Write as a professional developer documenting for the team
+- Be factual, clear, and objective
+- Developer humor acceptable, stay professional
+- No congratulatory, patronizing, or marketing language
+- Avoid excessive emojis
+- Document for long-term maintenance (2+ years in production)
+- Only comment non-obvious behavior, not obvious code
+- Do NOT use phrases like "You're all set!", "Congratulations!", "Amazing!"

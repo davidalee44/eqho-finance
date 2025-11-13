@@ -2,7 +2,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import audit, cache, emails, layouts, metrics, snapshots, stripe_data
+from app.api.v1 import audit, cache, customer_mrr, emails, layouts, metrics, revenue_projections, snapshots, stripe_data
 from app.core.config import settings
 from app.services.supabase_service import SupabaseService
 
@@ -46,6 +46,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(metrics.router, prefix="/api/v1/metrics", tags=["metrics"])
+app.include_router(revenue_projections.router, prefix="/api/v1/revenue", tags=["Revenue Projections"])
+app.include_router(customer_mrr.router, prefix="/api/v1/customer-mrr", tags=["Customer MRR"])
 app.include_router(stripe_data.router, prefix="/api/v1/stripe", tags=["stripe"])
 app.include_router(cache.router, prefix="/api/v1/cache", tags=["cache"])
 app.include_router(snapshots.router, prefix="/api/v1/snapshots", tags=["snapshots"])

@@ -87,6 +87,9 @@ class StripeService:
                                 "interval": item.price.recurring.interval
                                 if item.price.recurring
                                 else None,
+                                "interval_count": item.price.recurring.interval_count
+                                if item.price.recurring
+                                else 1,
                             }
                             for item in sub["items"].data
                         ],
@@ -102,12 +105,20 @@ class StripeService:
 
     @staticmethod
     async def calculate_mrr(subscriptions: List[Dict]) -> float:
-        """Calculate Monthly Recurring Revenue from subscriptions"""
+        """Calculate Monthly Recurring Revenue from subscriptions
+        
+        Excludes $0 subscriptions (trials, free tiers) from MRR calculation.
+        """
         mrr = 0.0
 
         for sub in subscriptions:
             for item in sub["items"]:
                 amount = item["amount"] / 100  # Convert cents to dollars
+                
+                # Skip $0 subscriptions (trials, free tiers)
+                if amount == 0:
+                    continue
+                
                 interval = item["interval"]
                 interval_count = item.get("interval_count", 1)
 

@@ -62,3 +62,20 @@ backend/.env
 registry/
 .vercel
 client_secret_*.json
+
+# IDE and AI assistant directories
+.cursor/
+.claude/
+ANIMATION_UPDATE.md
+BROWSER_REVIEW_REPORT.md
+BROWSER_TESTING_CHECKLIST.md
+CLERK_AUTH_SETUP.md
+COMMIT_SUMMARY.md
+CONSOLE_LOG_REVIEW.md
+CLERK_AUTH_SETUP.md
+FRONTEND_TROUBLESHOOTING.md
+IMPLEMENTATION_COMPLETE.md
+localhost_5173_(iPhone 14 Pro Max).png
+MOBILE_WIDTH_FIX.md
+DATA_VALIDATION_SUMMARY.md
+CLERK_AUTH_SETUP.md
