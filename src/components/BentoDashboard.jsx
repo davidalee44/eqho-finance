@@ -44,50 +44,51 @@ export const BentoDashboard = ({ slides, onSlideClick, currentSlideIndex = 0 }) 
 
   // Define card configurations with sizes and backgrounds
   // Using col-span classes: 1 = small, 2 = medium, 3 = large (full width in 3-col grid)
+  // Clean minimal card design - white, greys, and black
   const cardConfigs = [
     { 
       colSpan: 'col-span-3', // Full width - Executive Summary
-      background: <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20" />
+      background: <div className="absolute inset-0 bg-white" />
     },
     { 
       colSpan: 'col-span-1', // Small - Financial Performance
-      background: <div className="absolute inset-0 bg-gradient-to-br from-green-500/20 via-emerald-500/20 to-teal-500/20" />
+      background: <div className="absolute inset-0 bg-gray-50" />
     },
     { 
       colSpan: 'col-span-2', // Medium - Market Position
-      background: <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 via-violet-500/20 to-fuchsia-500/20" />
+      background: <div className="absolute inset-0 bg-white" />
     },
     { 
       colSpan: 'col-span-1', // Small - Business Model
-      background: <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 via-amber-500/20 to-yellow-500/20" />
+      background: <div className="absolute inset-0 bg-gray-100" />
     },
     { 
       colSpan: 'col-span-1', // Small - Growth Strategy
-      background: <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-blue-500/20 to-cyan-500/20" />
+      background: <div className="absolute inset-0 bg-white" />
     },
     { 
       colSpan: 'col-span-1', // Small - Use of Funds
-      background: <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 via-green-500/20 to-lime-500/20" />
+      background: <div className="absolute inset-0 bg-gray-50" />
     },
     { 
       colSpan: 'col-span-1', // Small - 36-Month Projection
-      background: <div className="absolute inset-0 bg-gradient-to-br from-rose-500/20 via-pink-500/20 to-red-500/20" />
+      background: <div className="absolute inset-0 bg-gray-900" />
     },
     { 
       colSpan: 'col-span-2', // Medium - SaaS Metrics
-      background: <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-blue-500/20 to-indigo-500/20" />
+      background: <div className="absolute inset-0 bg-white" />
     },
     { 
       colSpan: 'col-span-1', // Small - Financial Model
-      background: <div className="absolute inset-0 bg-gradient-to-br from-violet-500/20 via-purple-500/20 to-fuchsia-500/20" />
+      background: <div className="absolute inset-0 bg-gray-50" />
     },
     { 
       colSpan: 'col-span-2', // Medium - Team & Compensation
-      background: <div className="absolute inset-0 bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20" />
+      background: <div className="absolute inset-0 bg-gray-100" />
     },
     { 
       colSpan: 'col-span-1', // Small - AI Financial Report
-      background: <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-orange-500/20 to-red-500/20" />
+      background: <div className="absolute inset-0 bg-black" />
     },
   ];
 

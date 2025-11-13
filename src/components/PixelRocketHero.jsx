@@ -1,5 +1,5 @@
 import { motion, useAnimation } from 'framer-motion';
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -312,7 +312,7 @@ export const PixelRocketHero = ({ children }) => {
                   animate={textControls} 
                   style={{ 
                     display: 'inline-block',
-                    paddingLeft: i === 5 ? '0.3em' : '0' // Add space before "M" in "Moon"
+                    paddingLeft: i === 5 ? '0.30em' : '0' // Add space before "M" in "Moon"
                   }}
                 >
                     {char}
