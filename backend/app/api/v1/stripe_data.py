@@ -118,3 +118,121 @@ async def get_churn_and_arpu(months: int = Query(3, ge=1, le=12)):
         raise HTTPException(
             status_code=500, detail=f"Error calculating metrics: {str(e)}"
         )
+
+
+@router.get("/customer-metrics")
+async def get_customer_metrics():
+    """
+    Get comprehensive customer metrics including active, churned, net adds, and growth
+
+    Returns validated customer counts and growth metrics from Stripe data
+    """
+    try:
+        metrics = await StripeService.calculate_customer_metrics()
+        return metrics
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error calculating customer metrics: {str(e)}"
+        )
+
+
+@router.get("/retention-by-segment")
+async def get_retention_by_segment():
+    """
+    Get retention rates by product segment (TowPilot vs Other Products)
+
+    Returns validated retention rates calculated from Stripe subscription data
+    """
+    try:
+        retention = await StripeService.calculate_retention_by_segment()
+        return retention
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error calculating retention metrics: {str(e)}"
+        )
+
+
+@router.get("/pricing-tiers")
+async def get_pricing_tier_breakdown():
+    """
+    Get pricing tier breakdown for TowPilot subscriptions
+
+    Returns tier breakdown with customers, MRR, ARPU, and percentages
+    """
+    try:
+        tiers = await StripeService.calculate_pricing_tier_breakdown()
+        return tiers
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error calculating pricing tiers: {str(e)}"
+        )
+
+
+@router.get("/expansion-metrics")
+async def get_expansion_metrics():
+    """
+    Get expansion metrics including gross and net retention
+
+    Returns validated retention metrics calculated from historical Stripe data
+    """
+    try:
+        metrics = await StripeService.calculate_expansion_metrics()
+        return metrics
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error calculating expansion metrics: {str(e)}"
+        )
+
+
+@router.get("/unit-economics")
+async def get_unit_economics():
+    """
+    Get unit economics including CAC, LTV, LTV/CAC ratio, and payback period
+
+    Returns validated unit economics calculated from Stripe data and configured CAC
+    """
+    try:
+        economics = await StripeService.calculate_unit_economics()
+        return economics
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error calculating unit economics: {str(e)}"
+        )
+
+
+@router.get("/comprehensive-metrics")
+async def get_comprehensive_metrics():
+    """
+    Get all validated metrics in a single call for dashboard display
+
+    Returns comprehensive metrics including:
+    - Customer metrics
+    - Retention by segment
+    - Pricing tiers
+    - Expansion metrics
+    - Unit economics
+    - Churn and ARPU
+    """
+    try:
+        customer_metrics = await StripeService.calculate_customer_metrics()
+        retention = await StripeService.calculate_retention_by_segment()
+        pricing_tiers = await StripeService.calculate_pricing_tier_breakdown()
+        expansion = await StripeService.calculate_expansion_metrics()
+        unit_economics = await StripeService.calculate_unit_economics()
+        churn_arpu = await StripeService.calculate_churn_rate(months=3)
+        arpu = await StripeService.calculate_arpu()
+
+        return {
+            "customer_metrics": customer_metrics,
+            "retention_by_segment": retention,
+            "pricing_tiers": pricing_tiers,
+            "expansion_metrics": expansion,
+            "unit_economics": unit_economics,
+            "churn": churn_arpu,
+            "arpu": arpu,
+            "timestamp": datetime.now().isoformat(),
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error calculating comprehensive metrics: {str(e)}"
+        )

@@ -1,9 +1,8 @@
-import { useEffect, useRef } from 'react';
 import interact from 'interactjs';
+import { useEffect, useRef } from 'react';
 
 // Grid configuration - invisible to users but enforces structure
 const GRID_SIZE = 20; // 20px grid cells
-const GRID_COLUMNS = 24; // 24 columns for responsive layouts
 const MIN_CARD_WIDTH = 240; // 4 columns minimum
 const MIN_CARD_HEIGHT = 180; // 3 rows minimum
 const MAX_CARD_WIDTH = 720; // 12 columns maximum
@@ -17,19 +16,10 @@ function pixelsToGrid(pixels) {
 }
 
 /**
- * Calculate pixel position from grid cell coordinates
- */
-function gridToPixels(gridUnits) {
-  return gridUnits * GRID_SIZE;
-}
-
-/**
  * Get occupied grid cells for a card
  */
 function getOccupiedCells(element) {
   const rect = element.getBoundingClientRect();
-  const parent = element.parentElement.getBoundingClientRect();
-  
   const x = parseFloat(element.getAttribute('data-x')) || 0;
   const y = parseFloat(element.getAttribute('data-y')) || 0;
   
@@ -90,11 +80,60 @@ function wouldCollide(movingElement, newX, newY, newWidth, newHeight) {
   return false; // No collision
 }
 
-/**
- * Custom hook to make cards draggable and resizable with collision detection
- * @param {boolean} enabled - Whether drag/resize is enabled (admin only)
- * @param {function} onLayoutChange - Callback when layout changes
- */
+function slugify(text) {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[\s_]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function assignCardIdentifiers() {
+  const cards = document.querySelectorAll('.draggable-card');
+  const usedIds = new Set();
+
+  cards.forEach((card, index) => {
+    let cardId = card.getAttribute('data-card-id');
+
+    if (!cardId) {
+      const existingId = card.getAttribute('id');
+      if (existingId) {
+        cardId = existingId;
+      } else {
+        const heading = card.querySelector('h1, h2, h3, h4, h5, h6');
+        if (heading?.textContent) {
+          cardId = slugify(heading.textContent);
+        }
+      }
+
+      if (!cardId || usedIds.has(cardId)) {
+        let fallback = `card-${index}`;
+        let counter = 1;
+        while (usedIds.has(fallback)) {
+          fallback = `card-${index}-${counter++}`;
+        }
+        cardId = fallback;
+      }
+
+      card.setAttribute('data-card-id', cardId);
+    }
+
+    if (usedIds.has(cardId)) {
+      let dedupedId = cardId;
+      let counter = 1;
+      while (usedIds.has(dedupedId)) {
+        dedupedId = `${cardId}-${counter++}`;
+      }
+      card.setAttribute('data-card-id', dedupedId);
+      usedIds.add(dedupedId);
+    } else {
+      usedIds.add(cardId);
+    }
+  });
+}
+
 export function useDraggableCards(enabled, onLayoutChange) {
   const lastValidPosition = useRef(new Map());
   
@@ -127,7 +166,8 @@ export function useDraggableCards(enabled, onLayoutChange) {
 
     window.addEventListener('resize', debouncedResize);
 
-    // Make cards draggable
+    assignCardIdentifiers();
+
     interact('.draggable-card')
       .draggable({
         inertia: false,
@@ -190,7 +230,11 @@ export function useDraggableCards(enabled, onLayoutChange) {
       target.classList.add('dragging');
       
       // Store last valid position
-      const cardId = target.getAttribute('data-card-id');
+      let cardId = target.getAttribute('data-card-id');
+      if (!cardId) {
+        assignCardIdentifiers();
+        cardId = target.getAttribute('data-card-id');
+      }
       const x = parseFloat(target.getAttribute('data-x')) || 0;
       const y = parseFloat(target.getAttribute('data-y')) || 0;
       lastValidPosition.current.set(cardId, { x, y });

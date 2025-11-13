@@ -348,3 +348,410 @@ class StripeService:
             "total_customers": unique_customers,
             "total_mrr": round(total_mrr, 2),
         }
+
+    @staticmethod
+    async def calculate_customer_metrics() -> Dict:
+        """
+        Calculate comprehensive customer metrics including active, churned, net adds, and growth
+
+        Returns:
+            Dict with customer counts, growth metrics, and historical data
+        """
+        # Get all subscriptions (active and canceled)
+        all_subscriptions = []
+        starting_after = None
+
+        while True:
+            params = {"limit": 100}
+            if starting_after:
+                params["starting_after"] = starting_after
+
+            response = stripe.Subscription.list(**params)
+
+            for sub in response.data:
+                all_subscriptions.append(
+                    {
+                        "id": sub.id,
+                        "customer": sub.customer,
+                        "status": sub.status,
+                        "canceled_at": sub.canceled_at,
+                        "created": sub.created,
+                    }
+                )
+
+            if not response.has_more:
+                break
+
+            starting_after = response.data[-1].id
+
+        # Active customers (unique)
+        active_subscriptions = [s for s in all_subscriptions if s["status"] == "active"]
+        active_customers = len(set(s["customer"] for s in active_subscriptions))
+
+        # Churned customers (all time - unique customers who have canceled)
+        churned_subscriptions = [s for s in all_subscriptions if s.get("canceled_at")]
+        churned_customers = len(set(s["customer"] for s in churned_subscriptions))
+
+        # Calculate growth metrics (YTD - Jan 1 to now)
+        current_year = datetime.now().year
+        year_start = datetime(current_year, 1, 1)
+        year_start_timestamp = int(year_start.timestamp())
+
+        # Customers created this year
+        new_customers_ytd = len(
+            set(
+                s["customer"]
+                for s in all_subscriptions
+                if s["created"] >= year_start_timestamp
+            )
+        )
+
+        # Customers at start of year (approximate - those created before year start)
+        customers_at_year_start = len(
+            set(
+                s["customer"]
+                for s in all_subscriptions
+                if s["created"] < year_start_timestamp
+            )
+        )
+
+        # Net adds = new customers - churned customers this year
+        churned_this_year = len(
+            set(
+                s["customer"]
+                for s in churned_subscriptions
+                if s.get("canceled_at") and s["canceled_at"] >= year_start_timestamp
+            )
+        )
+        net_adds = new_customers_ytd - churned_this_year
+
+        # Growth rate calculation
+        growth_rate = (
+            (
+                (active_customers - customers_at_year_start)
+                / customers_at_year_start
+                * 100
+            )
+            if customers_at_year_start > 0
+            else 0.0
+        )
+
+        return {
+            "active_customers": active_customers,
+            "churned_customers": churned_customers,
+            "total_customers_all_time": active_customers + churned_customers,
+            "net_adds_ytd": net_adds,
+            "new_customers_ytd": new_customers_ytd,
+            "churned_ytd": churned_this_year,
+            "growth_rate_ytd": round(growth_rate, 1),
+            "customers_at_year_start": customers_at_year_start,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    @staticmethod
+    async def calculate_retention_by_segment() -> Dict:
+        """
+        Calculate retention rates by product segment (TowPilot vs Other Products)
+
+        Returns:
+            Dict with retention rates for TowPilot, Other Products, and Overall
+        """
+        # Get all subscriptions
+        all_subscriptions = []
+        starting_after = None
+
+        while True:
+            params = {"limit": 100}
+            if starting_after:
+                params["starting_after"] = starting_after
+
+            response = stripe.Subscription.list(**params)
+
+            for sub in response.data:
+                # Get customer metadata to identify TowPilot customers
+                customer = stripe.Customer.retrieve(sub.customer)
+                tags = customer.get("metadata", {}).get("tags", "")
+                is_towpilot = "tow" in tags.lower() if tags else False
+
+                all_subscriptions.append(
+                    {
+                        "id": sub.id,
+                        "customer": sub.customer,
+                        "status": sub.status,
+                        "canceled_at": sub.canceled_at,
+                        "created": sub.created,
+                        "is_towpilot": is_towpilot,
+                    }
+                )
+
+            if not response.has_more:
+                break
+
+            starting_after = response.data[-1].id
+
+        # Calculate retention for TowPilot
+        towpilot_subs = [s for s in all_subscriptions if s["is_towpilot"]]
+        towpilot_active = len([s for s in towpilot_subs if s["status"] == "active"])
+        towpilot_churned = len([s for s in towpilot_subs if s.get("canceled_at")])
+        towpilot_total = towpilot_active + towpilot_churned
+        towpilot_retention = (
+            (towpilot_active / towpilot_total * 100) if towpilot_total > 0 else 0.0
+        )
+
+        # Calculate retention for Other Products
+        other_subs = [s for s in all_subscriptions if not s["is_towpilot"]]
+        other_active = len([s for s in other_subs if s["status"] == "active"])
+        other_churned = len([s for s in other_subs if s.get("canceled_at")])
+        other_total = other_active + other_churned
+        other_retention = (other_active / other_total * 100) if other_total > 0 else 0.0
+
+        # Overall retention
+        overall_active = len([s for s in all_subscriptions if s["status"] == "active"])
+        overall_churned = len([s for s in all_subscriptions if s.get("canceled_at")])
+        overall_total = overall_active + overall_churned
+        overall_retention = (
+            (overall_active / overall_total * 100) if overall_total > 0 else 0.0
+        )
+
+        return {
+            "towpilot": {
+                "retention_rate": round(towpilot_retention, 1),
+                "active_customers": towpilot_active,
+                "churned_customers": towpilot_churned,
+                "total_customers": towpilot_total,
+            },
+            "other_products": {
+                "retention_rate": round(other_retention, 1),
+                "active_customers": other_active,
+                "churned_customers": other_churned,
+                "total_customers": other_total,
+            },
+            "overall": {
+                "retention_rate": round(overall_retention, 1),
+                "active_customers": overall_active,
+                "churned_customers": overall_churned,
+                "total_customers": overall_total,
+            },
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    @staticmethod
+    async def calculate_pricing_tier_breakdown() -> Dict:
+        """
+        Calculate pricing tier breakdown for TowPilot subscriptions
+
+        Returns:
+            Dict with tier breakdown including customers, MRR, ARPU, and percentages
+        """
+        # Get TowPilot subscriptions
+        towpilot_customers = await StripeService.get_all_customers(has_tag="tow")
+        towpilot_customer_ids = [c["id"] for c in towpilot_customers]
+        towpilot_subscriptions = await StripeService.get_active_subscriptions(
+            customer_ids=towpilot_customer_ids
+        )
+
+        # Group by pricing tier (based on MRR amount)
+        # This is a simplified approach - in production, you'd use price IDs or metadata
+        tiers = {
+            "Heavy Duty": {"threshold": 1000, "customers": [], "mrr": 0.0},
+            "Medium Duty": {"threshold": 500, "customers": [], "mrr": 0.0},
+            "Standard": {"threshold": 400, "customers": [], "mrr": 0.0},
+            "Basic/Light": {"threshold": 300, "customers": [], "mrr": 0.0},
+            "Other/Custom": {"threshold": 0, "customers": [], "mrr": 0.0},
+        }
+
+        for sub in towpilot_subscriptions:
+            sub_mrr = await StripeService.calculate_mrr([sub])
+            customer_id = sub["customer"]
+
+            # Categorize by MRR
+            if sub_mrr >= tiers["Heavy Duty"]["threshold"]:
+                tier = "Heavy Duty"
+            elif sub_mrr >= tiers["Medium Duty"]["threshold"]:
+                tier = "Medium Duty"
+            elif sub_mrr >= tiers["Standard"]["threshold"]:
+                tier = "Standard"
+            elif sub_mrr >= tiers["Basic/Light"]["threshold"]:
+                tier = "Basic/Light"
+            else:
+                tier = "Other/Custom"
+
+            if customer_id not in tiers[tier]["customers"]:
+                tiers[tier]["customers"].append(customer_id)
+            tiers[tier]["mrr"] += sub_mrr
+
+        # Calculate totals
+        total_customers = sum(len(t["customers"]) for t in tiers.values())
+        total_mrr = sum(t["mrr"] for t in tiers.values())
+
+        # Format results
+        result = []
+        for tier_name, tier_data in tiers.items():
+            customers = len(tier_data["customers"])
+            mrr = tier_data["mrr"]
+            arpu = (mrr / customers) if customers > 0 else 0.0
+            percentage = (mrr / total_mrr * 100) if total_mrr > 0 else 0.0
+
+            result.append(
+                {
+                    "tier": tier_name,
+                    "customers": customers,
+                    "mrr": round(mrr, 2),
+                    "arpu": round(arpu, 2),
+                    "percentage": round(percentage, 1),
+                }
+            )
+
+        return {
+            "tiers": result,
+            "total_customers": total_customers,
+            "total_mrr": round(total_mrr, 2),
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    @staticmethod
+    async def calculate_expansion_metrics() -> Dict:
+        """
+        Calculate expansion metrics including gross and net retention
+
+        Returns:
+            Dict with gross retention, net retention, and expansion revenue metrics
+        """
+        # Get all subscriptions with historical data
+        all_subscriptions = []
+        starting_after = None
+
+        # Look back 12 months for retention calculation
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=365)
+        start_timestamp = int(start_date.timestamp())
+
+        while True:
+            params = {"limit": 100}
+            if starting_after:
+                params["starting_after"] = starting_after
+
+            response = stripe.Subscription.list(**params)
+
+            for sub in response.data:
+                all_subscriptions.append(
+                    {
+                        "id": sub.id,
+                        "customer": sub.customer,
+                        "status": sub.status,
+                        "canceled_at": sub.canceled_at,
+                        "created": sub.created,
+                        "items": [
+                            {
+                                "price": item.price.id,
+                                "amount": item.price.unit_amount,
+                                "currency": item.price.currency,
+                                "interval": item.price.recurring.interval
+                                if item.price.recurring
+                                else None,
+                            }
+                            for item in sub["items"].data
+                        ],
+                    }
+                )
+
+            if not response.has_more:
+                break
+
+            starting_after = response.data[-1].id
+
+        # Subscriptions active at start of period
+        active_at_start = [
+            s
+            for s in all_subscriptions
+            if s["created"] < start_timestamp
+            and (
+                s["status"] == "active"
+                or (s.get("canceled_at") and s["canceled_at"] >= start_timestamp)
+            )
+        ]
+
+        # Calculate MRR at start
+        start_mrr = await StripeService.calculate_mrr(active_at_start)
+
+        # Current active subscriptions (those still active from start period)
+        still_active = [s for s in active_at_start if s["status"] == "active"]
+        current_mrr = await StripeService.calculate_mrr(still_active)
+
+        # Gross retention = (start_mrr - churned_mrr) / start_mrr
+        churned_subs = [
+            s
+            for s in active_at_start
+            if s.get("canceled_at") and s["canceled_at"] >= start_timestamp
+        ]
+        churned_mrr = await StripeService.calculate_mrr(churned_subs)
+        gross_retention = (
+            ((start_mrr - churned_mrr) / start_mrr * 100) if start_mrr > 0 else 0.0
+        )
+
+        # Net retention = current_mrr / start_mrr (includes expansion)
+        net_retention = (current_mrr / start_mrr * 100) if start_mrr > 0 else 0.0
+
+        # Expansion revenue = net retention - gross retention
+        expansion_revenue_pct = net_retention - gross_retention
+
+        return {
+            "gross_retention": round(gross_retention, 1),
+            "net_retention": round(net_retention, 1),
+            "expansion_revenue_pct": round(expansion_revenue_pct, 1),
+            "mrr_at_start": round(start_mrr, 2),
+            "current_mrr": round(current_mrr, 2),
+            "churned_mrr": round(churned_mrr, 2),
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    @staticmethod
+    async def calculate_unit_economics() -> Dict:
+        """
+        Calculate unit economics including CAC, LTV, LTV/CAC ratio, and payback period
+
+        Note: CAC is assumed from investor deck data. LTV is calculated from ARPU and gross margin.
+
+        Returns:
+            Dict with CAC, LTV, LTV/CAC ratio, and payback period
+        """
+        # Get subscriptions and calculate ARPU
+        subscriptions = await StripeService.get_active_subscriptions()
+        arpu_data = await StripeService.calculate_arpu(subscriptions)
+
+        # Assumed CAC from investor deck (could be made configurable)
+        cac_total = 831.0
+        cac_sales = 450.0
+        cac_marketing = 381.0
+
+        # Calculate LTV (36-month horizon @ 55.8% gross margin)
+        gross_margin = 0.558
+        ltv_months = 36
+        monthly_gross_profit = arpu_data["arpu_monthly"] * gross_margin
+        ltv = monthly_gross_profit * ltv_months
+
+        # LTV/CAC ratio
+        ltv_cac_ratio = (ltv / cac_total) if cac_total > 0 else 0.0
+
+        # CAC payback period (months to recover CAC)
+        cac_payback = (
+            (cac_total / monthly_gross_profit) if monthly_gross_profit > 0 else 0.0
+        )
+
+        return {
+            "cac": {
+                "total": round(cac_total, 2),
+                "sales": round(cac_sales, 2),
+                "marketing": round(cac_marketing, 2),
+            },
+            "ltv": {
+                "value": round(ltv, 2),
+                "months": ltv_months,
+                "gross_margin": gross_margin,
+                "monthly_gross_profit": round(monthly_gross_profit, 2),
+            },
+            "ltv_cac_ratio": round(ltv_cac_ratio, 2),
+            "cac_payback_months": round(cac_payback, 2),
+            "arpu_monthly": arpu_data["arpu_monthly"],
+            "timestamp": datetime.now().isoformat(),
+        }

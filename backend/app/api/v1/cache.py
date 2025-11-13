@@ -23,7 +23,7 @@ async def refresh_cache(product: str):
 
 @router.post("/clear")
 async def clear_cache():
-    """Clear all caches (memory + MongoDB)"""
+    """Clear all caches"""
     await cache_service.clear_all()
 
     return {
