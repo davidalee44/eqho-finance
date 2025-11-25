@@ -3578,8 +3578,8 @@ const App = ({ userProfile }) => {
             </div>
           </div>
 
-          {/* Sticky Footer Navigation - positioned above main footer (h-12 = 48px) */}
-          <div className="fixed bottom-12 left-0 right-0 bg-background/98 backdrop-blur-md border-t shadow-lg z-30">
+          {/* Sticky Footer Navigation - positioned above main footer (h-12 = 48px, z-50) */}
+          <div className="fixed bottom-12 left-0 right-0 bg-background/98 backdrop-blur-md border-t shadow-lg z-[60]">
             <div className="container mx-auto flex items-center justify-between p-4">
               <Button
                 variant="outline"

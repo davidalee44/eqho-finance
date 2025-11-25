@@ -13,6 +13,7 @@ import { ACTION_TYPES, logAction } from './services/auditService'
 function AuthWrapper() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [authView, setAuthView] = useState('sign_in')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -88,14 +89,14 @@ function AuthWrapper() {
                     fontWeight: '700',
                     padding: '12px 16px',
                     fontSize: '14px',
-                    minHeight: '44px', // iOS tap target minimum
-                    touchAction: 'manipulation', // Prevent zoom on tap
+                    minHeight: '44px',
+                    touchAction: 'manipulation',
                   },
                   anchor: {
                     color: '#60a5fa',
                     fontSize: '13px',
                     padding: '8px',
-                    minHeight: '44px', // iOS tap target minimum
+                    minHeight: '44px',
                     display: 'inline-flex',
                     alignItems: 'center',
                   },
@@ -105,8 +106,8 @@ function AuthWrapper() {
                     borderRadius: '0.75rem',
                     color: 'white',
                     padding: '12px 14px',
-                    fontSize: '16px', // Prevents iOS zoom on focus
-                    minHeight: '44px', // iOS tap target minimum
+                    fontSize: '16px',
+                    minHeight: '44px',
                     touchAction: 'manipulation',
                   },
                   label: {
@@ -150,9 +151,10 @@ function AuthWrapper() {
               providers={['google']}
               onlyThirdPartyProviders={false}
               socialLayout="vertical"
-              view="sign_in"
-              showLinks={true}
+              view={authView}
+              showLinks={false}
               magicLink={false}
+              redirectTo={window.location.origin}
               localization={{
                 variables: {
                   sign_in: {
@@ -160,7 +162,6 @@ function AuthWrapper() {
                     password_label: 'Password',
                     button_label: 'Sign In',
                     social_provider_text: 'Continue with {{provider}}',
-                    link_text: "Don't have an account? Sign up",
                     email_input_placeholder: 'Your email',
                     password_input_placeholder: 'Your password',
                   },
@@ -169,7 +170,6 @@ function AuthWrapper() {
                     password_label: 'Create Password',
                     button_label: 'Create Account',
                     social_provider_text: 'Sign up with {{provider}}',
-                    link_text: 'Already have an account? Sign in',
                     email_input_placeholder: 'Your email',
                     password_input_placeholder: 'Create a strong password',
                     confirmation_text: 'Check your email for confirmation link',
@@ -177,6 +177,40 @@ function AuthWrapper() {
                 },
               }}
             />
+
+            {/* Custom Auth Links - workaround for Supabase Auth UI bug */}
+            <div className="mt-4 flex flex-col items-center gap-2">
+              {authView === 'sign_in' ? (
+                <>
+                  <button
+                    onClick={() => setAuthView('forgotten_password')}
+                    className="text-blue-400 hover:text-blue-300 text-sm"
+                  >
+                    Forgot your password?
+                  </button>
+                  <button
+                    onClick={() => setAuthView('sign_up')}
+                    className="text-blue-400 hover:text-blue-300 text-sm"
+                  >
+                    Don't have an account? Sign up
+                  </button>
+                </>
+              ) : authView === 'sign_up' ? (
+                <button
+                  onClick={() => setAuthView('sign_in')}
+                  className="text-blue-400 hover:text-blue-300 text-sm"
+                >
+                  Already have an account? Sign in
+                </button>
+              ) : authView === 'forgotten_password' ? (
+                <button
+                  onClick={() => setAuthView('sign_in')}
+                  className="text-blue-400 hover:text-blue-300 text-sm"
+                >
+                  Back to Sign In
+                </button>
+              ) : null}
+            </div>
 
             {/* Footer */}
             <div className="mt-4 sm:mt-6 text-center">

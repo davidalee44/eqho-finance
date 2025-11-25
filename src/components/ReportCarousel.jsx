@@ -261,8 +261,8 @@ export const ReportCarousel = ({ slides, onExit, autoAdvanceInterval = null }) =
           </div>
         </div>
 
-        {/* Footer - Always Visible - positioned above main footer (h-12 = 48px) */}
-        <div className="fixed bottom-12 left-0 right-0 z-30 bg-background/98 backdrop-blur-md border-t shadow-lg">
+        {/* Footer - Always Visible - positioned above main footer (h-12 = 48px, z-50) */}
+        <div className="fixed bottom-12 left-0 right-0 z-[60] bg-background/98 backdrop-blur-md border-t shadow-lg">
           {/* Slide Counter - Prominent */}
           <div className="flex items-center justify-center py-3 border-b">
             <div className="bg-primary/10 text-primary px-6 py-2 rounded-full text-base font-semibold">
