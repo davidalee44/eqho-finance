@@ -1,5 +1,102 @@
 # Agent Guidelines & Reminders
 
+## Project Overview
+
+**Eqho Due Diligence** is an interactive investor deck for Eqho's $500K seed funding round. It presents TowPilot product metrics, financial analysis, and investment terms through a React-based dashboard with presentation carousel mode.
+
+### Tech Stack
+- **Frontend**: React 18 + Vite + Tailwind CSS + shadcn/ui (port 5173)
+- **Backend**: FastAPI + Stripe + Supabase (port 8000)
+- **Database**: Supabase (PostgreSQL with Row Level Security)
+- **Auth**: Supabase Auth with email/password and Google OAuth
+
+### Development URLs
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+- Integrations: http://localhost:5173/settings/integrations (admin only)
+- Audit Logs: http://localhost:5173/audit-logs (admin only)
+
+### Quick Start
+```bash
+# Terminal 1: Backend
+cd backend && source .venv/bin/activate
+python -m uvicorn app.main:app --reload --port 8000
+
+# Terminal 2: Frontend
+npm run dev
+```
+
+---
+
+## Current State (Nov 2025)
+
+### Working Features
+- Backend API is healthy and connected to Supabase
+- All API endpoints documented at /docs (metrics, revenue, customer-mrr, stripe, cache, snapshots, emails, pipedream, layouts, audit)
+- Frontend login UI renders with Supabase Auth (Google OAuth + email/password)
+- Pixel art "To the Moon!" landing page with space theme
+- 3D animations and visual effects on login page
+
+### Known Issues
+- **Auth**: The user `dave@eqho.ai` was created via **Google OAuth only**. Email/password login and password reset won't work until the Google OAuth redirect URI is configured.
+
+### CRITICAL: Google OAuth Setup Required
+
+The "Continue with Google" button fails with `redirect_uri_mismatch` error until you add the Supabase callback URL to Google Cloud Console.
+
+**Add this redirect URI to Google Cloud Console:**
+```
+https://ikaepdczwgwesmndvcdd.supabase.co/auth/v1/callback
+```
+
+**Steps:**
+1. Go to https://console.cloud.google.com/apis/credentials
+2. Click on OAuth 2.0 Client ID: `733123703123-j5ernilt7frt9ulba0an8g177smmhgat`
+3. In "Authorized redirect URIs", click "ADD URI"
+4. Paste: `https://ikaepdczwgwesmndvcdd.supabase.co/auth/v1/callback`
+5. Click "SAVE"
+
+After adding the redirect URI, Google OAuth will work and `dave@eqho.ai` can sign in.
+
+### Super Admin Configuration
+- User: `davidalee44@gmail.com` (David Lee)
+- Role: `super_admin` (set in `public.user_profiles` table)
+- Auth Method: Google OAuth
+- Supabase Project: `ikaepdczwgwesmndvcdd`
+
+### Database Notes
+- User profiles table: `user_profiles` (not `profiles`)
+- Uses `is_admin()` security definer function for RLS
+- Allowed roles: `investor`, `sales`, `admin`, `super_admin`
+
+### Test User Account (for automated testing)
+- Email: `test@eqho.ai`
+- Password: `TestUser123!`
+- Role: `investor`
+- Note: Email/password login works via API but the `@supabase/auth-ui-react` component has a "missing email or phone" bug. Use curl or Postman to test API auth:
+  ```bash
+  curl -X POST "https://ikaepdczwgwesmndvcdd.supabase.co/auth/v1/token?grant_type=password" \
+    -H "apikey: YOUR_ANON_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{"email": "test@eqho.ai", "password": "TestUser123!"}'
+  ```
+
+### Backend API Endpoints
+| Category | Endpoints |
+|----------|-----------|
+| Metrics | `/api/v1/metrics/towpilot`, `/api/v1/metrics/all-products`, `/api/v1/metrics/summary` |
+| Revenue | `/api/v1/revenue/current-month`, `/api/v1/revenue/month-detail`, `/api/v1/revenue/quarterly-forecast`, `/api/v1/revenue/annual-forecast` |
+| Customer MRR | `/api/v1/customer-mrr/list`, `/api/v1/customer-mrr/summary-by-tier`, `/api/v1/customer-mrr/export-csv` |
+| Stripe | Various Stripe data endpoints |
+| Cache | Cache management with TTL |
+| Snapshots | Version control for reports |
+| Pipedream | Integration webhooks |
+| Layouts | Dashboard card layouts (admin only) |
+| Audit | Action logging and export |
+
+---
+
 ## Documentation Standards
 
 ### Code Documentation Philosophy

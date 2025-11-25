@@ -345,3 +345,65 @@ From `.cursorrules`:
 - Document for long-term maintenance (2+ years in production)
 - Only comment non-obvious behavior, not obvious code
 - Do NOT use phrases like "You're all set!", "Congratulations!", "Amazing!"
+
+---
+
+## Verification Status (Nov 2025)
+
+### Servers
+| Service | Port | Status |
+|---------|------|--------|
+| Backend (FastAPI/Uvicorn) | 8000 | Running |
+| Frontend (Vite) | 5173 | Running |
+| Supabase | Cloud | Connected |
+
+### Backend Health
+```json
+{
+  "status": "healthy",
+  "cache_stats": {"memory_cache": {"entries": 0, "keys": []}},
+  "backend": "supabase"
+}
+```
+
+### Frontend Features Verified
+- Login page renders with "To the Moon!" pixel art hero
+- Supabase Auth UI component with Google OAuth and email/password
+- Form inputs functional (email, password fields)
+- Space theme with starfield background animation
+
+### Known Issues
+1. **Google OAuth Redirect URI Missing**: The "Continue with Google" button fails with `redirect_uri_mismatch` until you add this redirect URI to Google Cloud Console:
+   ```
+   https://ikaepdczwgwesmndvcdd.supabase.co/auth/v1/callback
+   ```
+   Go to: https://console.cloud.google.com/apis/credentials → Edit OAuth 2.0 Client → Add Authorized redirect URI
+
+2. **Super Admin Account** (`davidalee44@gmail.com`):
+   - Has `super_admin` role in `public.user_profiles` table
+   - Auth via Google OAuth (passkey)
+   - Full access to all admin features
+
+3. **Test Account** (`test@eqho.ai` / `TestUser123!`):
+   - Has `investor` role
+   - Email confirmed, password auth enabled
+   - API login works but Auth UI has a bug (see below)
+
+4. **Auth UI Bug**: The `@supabase/auth-ui-react` component shows "missing email or phone" error on submit even though credentials are entered. The Supabase API works correctly - this is a frontend component issue. Workaround: use Google OAuth or test via API directly.
+
+### API Endpoints Available
+- `/api/v1/metrics/*` - Business metrics (TowPilot, all-products, summary)
+- `/api/v1/revenue/*` - Revenue projections (current-month, month-detail, quarterly-forecast, annual-forecast)
+- `/api/v1/customer-mrr/*` - Customer MRR data (list, summary-by-tier, export-csv)
+- `/api/v1/stripe/*` - Stripe integration endpoints
+- `/api/v1/cache/*` - Cache management
+- `/api/v1/snapshots/*` - Version control for reports
+- `/api/v1/pipedream/*` - Pipedream integration
+- `/api/v1/layouts/*` - Dashboard layouts (admin only)
+- `/api/v1/audit/*` - Audit logging
+
+### MCP Tools Available
+- **Supabase MCP**: Database queries, migrations, auth via `mcp_supabase-homeownership4u_*`
+- **shadcn MCP**: UI component registry via `mcp_shadcn_*`
+- **Browser MCP**: Automated testing via `mcp_cursor-ide-browser_*`
+- **Eqho MCP**: Campaign/agent management via `mcp_eqho-mcp-server-kyle_*`
