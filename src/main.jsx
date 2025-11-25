@@ -111,10 +111,7 @@ function AuthWrapper() {
                     touchAction: 'manipulation',
                   },
                   label: {
-                    color: '#9ca3af',
-                    fontSize: '13px',
-                    marginBottom: '4px',
-                    fontWeight: '500',
+                    display: 'none',
                   },
                   message: {
                     color: '#ef4444',
