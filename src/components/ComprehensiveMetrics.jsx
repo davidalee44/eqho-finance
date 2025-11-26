@@ -4,35 +4,40 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { API_BASE_URL, ApiError, apiFetch, cacheMetrics, getCachedMetrics } from '@/lib/api';
+import { API_BASE_URL, ApiError, apiFetch, cacheMetrics, getCachedMetrics, fetchCachedMetrics } from '@/lib/api';
 import { AlertCircle, CheckCircle2, Loader2, RefreshCw, Wifi } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { DataTimestamp, CachedDataBanner } from '@/components/DataTimestamp';
 
 /**
  * Comprehensive metrics component that fetches all validated metrics from backend
  * Replaces hardcoded values with backend-calculated metrics from Stripe data
+ * 
+ * @param {boolean} investorMode - Hide error messages and fallback indicators (for investor presentations)
  */
-export const ComprehensiveMetrics = () => {
+export const ComprehensiveMetrics = ({ investorMode = false }) => {
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [usingCache, setUsingCache] = useState(false);
+  const [dataTimestamp, setDataTimestamp] = useState(null);
 
   useEffect(() => {
     fetchMetrics();
   }, []);
 
-  const fetchMetrics = async (useCache = true) => {
+  const fetchMetrics = async (useLocalCache = true) => {
     setLoading(true);
     setError(null);
     
-    // Try to load from cache first
-    if (useCache) {
+    // Try to load from localStorage cache first
+    if (useLocalCache) {
       const cached = getCachedMetrics('comprehensive-metrics');
       if (cached) {
         setMetrics(cached);
         setUsingCache(true);
+        setDataTimestamp(cached.timestamp);
         setLoading(false);
         // Still try to fetch fresh data in background
         fetchMetrics(false);
@@ -44,16 +49,33 @@ export const ComprehensiveMetrics = () => {
       const data = await apiFetch('/api/v1/stripe/comprehensive-metrics');
       setMetrics(data);
       setUsingCache(false);
+      setDataTimestamp(data.timestamp);
       cacheMetrics('comprehensive-metrics', data);
       setRetryCount(0);
     } catch (err) {
       console.error('Error fetching comprehensive metrics:', err);
       setError(err instanceof ApiError ? err : new ApiError(err.message, 'unknown', null, API_BASE_URL));
-      // Try to use cached data if available
+      
+      // Try to fetch from database cache
+      try {
+        const dbCached = await fetchCachedMetrics('comprehensive_metrics');
+        if (dbCached && dbCached.data) {
+          setMetrics(dbCached.data);
+          setUsingCache(true);
+          setDataTimestamp(dbCached.fetched_at);
+          setLoading(false);
+          return;
+        }
+      } catch (dbErr) {
+        console.warn('Failed to fetch from database cache:', dbErr);
+      }
+      
+      // Try localStorage cache as last resort
       const cached = getCachedMetrics('comprehensive-metrics');
       if (cached) {
         setMetrics(cached);
         setUsingCache(true);
+        setDataTimestamp(cached.timestamp);
       }
     } finally {
       setLoading(false);
@@ -97,7 +119,9 @@ export const ComprehensiveMetrics = () => {
     );
   }
 
+  // Hide error completely in investor mode
   if (error && !metrics) {
+    if (investorMode) return null;
     const apiError = error instanceof ApiError ? error : null;
     return (
       <Card className="border-2 border-red-200">
@@ -180,8 +204,12 @@ export const ComprehensiveMetrics = () => {
             </Badge>
           </div>
           <CardDescription className="text-xs text-green-700 mt-1">
-            All metrics calculated from Stripe API data • Last updated: {new Date(timestamp).toLocaleString()}
-            {usingCache && ' • Showing cached data'}
+            <DataTimestamp
+              timestamp={dataTimestamp}
+              source="Stripe"
+              isCached={usingCache}
+              onRefresh={() => fetchMetrics(false)}
+            />
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -195,7 +223,7 @@ export const ComprehensiveMetrics = () => {
               <RefreshCw className="h-3 w-3" />
               Refresh All Metrics
             </Button>
-            {error && (
+            {error && !investorMode && (
               <div className="text-xs text-amber-600 flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" />
                 {error instanceof ApiError ? error.message : 'API unavailable'}

@@ -4,6 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 
 from app.services.stripe_service import StripeService
+from app.services.metrics_cache_service import MetricsCacheService
 
 router = APIRouter()
 
@@ -35,10 +36,38 @@ async def get_subscriptions():
     """Fetch all active subscriptions from Stripe"""
     try:
         subscriptions = await StripeService.get_active_subscriptions()
-        return {
+        result = {
             "count": len(subscriptions),
             "subscriptions": subscriptions,
+            "timestamp": datetime.now().isoformat(),
         }
+        
+        # Calculate MRR from subscriptions (using items array, not plan)
+        total_mrr = 0
+        for sub in subscriptions:
+            for item in sub.get("items", []):
+                amount = item.get("amount", 0) or 0
+                interval = item.get("interval")
+                interval_count = item.get("interval_count", 1) or 1
+                
+                # Normalize to monthly MRR
+                if interval == "month":
+                    total_mrr += (amount / 100) / interval_count
+                elif interval == "year":
+                    total_mrr += (amount / 100) / 12
+        
+        # Cache MRR metrics for fallback
+        await MetricsCacheService.save_metrics(
+            metric_type="mrr_subscriptions",
+            data={
+                "total_mrr": total_mrr,
+                "count": len(subscriptions),
+                "timestamp": datetime.now().isoformat(),
+            },
+            source="stripe"
+        )
+        
+        return result
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error fetching subscriptions: {str(e)}"
@@ -109,11 +138,20 @@ async def get_churn_and_arpu(months: int = Query(3, ge=1, le=12)):
         churn = await StripeService.calculate_churn_rate(months=months)
         arpu = await StripeService.calculate_arpu()
 
-        return {
+        result = {
             "churn": churn,
             "arpu": arpu,
             "timestamp": datetime.now().isoformat(),
         }
+
+        # Cache the result for fallback
+        await MetricsCacheService.save_metrics(
+            metric_type="churn_arpu",
+            data=result,
+            source="stripe"
+        )
+
+        return result
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error calculating metrics: {str(e)}"
@@ -129,6 +167,14 @@ async def get_customer_metrics():
     """
     try:
         metrics = await StripeService.calculate_customer_metrics()
+        
+        # Cache the result for fallback
+        await MetricsCacheService.save_metrics(
+            metric_type="customer_metrics",
+            data=metrics,
+            source="stripe"
+        )
+        
         return metrics
     except Exception as e:
         raise HTTPException(
@@ -222,7 +268,7 @@ async def get_comprehensive_metrics():
         churn_arpu = await StripeService.calculate_churn_rate(months=3)
         arpu = await StripeService.calculate_arpu()
 
-        return {
+        result = {
             "customer_metrics": customer_metrics,
             "retention_by_segment": retention,
             "pricing_tiers": pricing_tiers,
@@ -232,7 +278,74 @@ async def get_comprehensive_metrics():
             "arpu": arpu,
             "timestamp": datetime.now().isoformat(),
         }
+
+        # Cache the result to database for fallback
+        await MetricsCacheService.save_metrics(
+            metric_type="comprehensive_metrics",
+            data=result,
+            source="stripe"
+        )
+
+        return result
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error calculating comprehensive metrics: {str(e)}"
+        )
+
+
+@router.get("/cached/{metric_type}")
+async def get_cached_metrics(metric_type: str):
+    """
+    Get cached metrics from database when live API is unavailable.
+    
+    Args:
+        metric_type: Type of metrics to retrieve (e.g., 'comprehensive_metrics', 'churn_arpu', 'mrr')
+    
+    Returns:
+        Cached metrics with timestamp showing when data was last fetched
+    """
+    try:
+        cached = await MetricsCacheService.get_latest_metrics(metric_type)
+        
+        if cached is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No cached data found for {metric_type}"
+            )
+        
+        return {
+            "data": cached["data"],
+            "fetched_at": cached["fetched_at"],
+            "source": cached["source"],
+            "is_cached": True,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving cached metrics: {str(e)}"
+        )
+
+
+@router.get("/cached")
+async def get_all_cached_metrics():
+    """
+    Get all cached metrics from database.
+    
+    Returns:
+        Dict mapping metric_type to cached data with timestamps
+    """
+    try:
+        all_cached = await MetricsCacheService.get_all_latest_metrics()
+        
+        return {
+            "metrics": all_cached,
+            "count": len(all_cached),
+            "timestamp": datetime.now().isoformat(),
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving cached metrics: {str(e)}"
         )

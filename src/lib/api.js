@@ -5,27 +5,30 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 /**
- * Fallback values when API is unavailable (last known good state)
+ * Fallback values when API is unavailable and no cached data exists.
+ * All values are null to indicate no data available - components should
+ * show "Data unavailable" state rather than fake numbers.
  */
 export const FALLBACK_METRICS = {
   total: {
-    mrr: 55913,
-    arr: 670956,
-    customers: 85,
-    subscriptions: 85,
+    mrr: null,
+    arr: null,
+    customers: null,
+    subscriptions: null,
   },
   towpilot: {
-    mrr: 47913,
-    arr: 574956,
-    customers: 74,
-    acv: 8027,
+    mrr: null,
+    arr: null,
+    customers: null,
+    acv: null,
   },
   other: {
-    mrr: 8000,
-    arr: 96000,
-    customers: 11,
+    mrr: null,
+    arr: null,
+    customers: null,
   },
-  timestamp: new Date().toISOString(),
+  timestamp: null,
+  is_fallback: true,
 };
 
 /**
@@ -213,6 +216,80 @@ export function cacheMetrics(key, data) {
     );
   } catch (error) {
     console.warn('Failed to cache metrics:', error);
+  }
+}
+
+/**
+ * Fetch cached metrics from backend database when live API is unavailable.
+ * Returns cached data with timestamp showing when it was last fetched.
+ * 
+ * @param {string} metricType - Type of metric to fetch (e.g., 'comprehensive_metrics', 'churn_arpu')
+ * @returns {Promise<{data: object, fetched_at: string, source: string, is_cached: boolean} | null>}
+ */
+export async function fetchCachedMetrics(metricType) {
+  try {
+    console.log(`[Cache] Fetching cached ${metricType} from database...`);
+    const response = await apiFetch(`/api/v1/stripe/cached/${metricType}`);
+    console.log(`[Cache] ✓ Retrieved cached ${metricType} from ${response.fetched_at}`);
+    return response;
+  } catch (error) {
+    console.warn(`[Cache] ✗ No cached data available for ${metricType}:`, error.message);
+    return null;
+  }
+}
+
+/**
+ * Fetch all cached metrics from backend database.
+ * Useful for initial load when backend API might be slow.
+ * 
+ * @returns {Promise<{metrics: object, count: number} | null>}
+ */
+export async function fetchAllCachedMetrics() {
+  try {
+    console.log('[Cache] Fetching all cached metrics from database...');
+    const response = await apiFetch('/api/v1/stripe/cached');
+    console.log(`[Cache] ✓ Retrieved ${response.count} cached metric types`);
+    return response;
+  } catch (error) {
+    console.warn('[Cache] ✗ Failed to fetch cached metrics:', error.message);
+    return null;
+  }
+}
+
+/**
+ * Format a timestamp for display
+ * @param {string | null} timestamp - ISO timestamp string
+ * @returns {string} Formatted date/time string
+ */
+export function formatDataTimestamp(timestamp) {
+  if (!timestamp) return 'Unknown';
+  
+  try {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    // If less than 1 minute ago
+    if (diffMins < 1) return 'Just now';
+    
+    // If less than 1 hour ago
+    if (diffHours < 1) return `${diffMins} min ago`;
+    
+    // If less than 24 hours ago
+    if (diffDays < 1) return `${diffHours} hr ago`;
+    
+    // Otherwise, show the date
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  } catch {
+    return 'Unknown';
   }
 }
 

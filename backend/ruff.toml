@@ -1,0 +1,81 @@
+# Ruff Configuration for Eqho Due Diligence Backend
+# Documentation: https://docs.astral.sh/ruff/configuration/
+
+# Target Python version
+target-version = "py39"
+
+# Line length (matches existing code style)
+line-length = 120
+
+# Exclude directories from linting
+exclude = [
+    ".venv",
+    "__pycache__",
+    ".git",
+    "*.pyc",
+    "migrations",
+    "alembic",
+    ".pytest_cache",
+]
+
+# Output format for terminal
+output-format = "concise"
+
+# Fix violations automatically when running `ruff check --fix`
+fix = false
+
+# Show fixes in output
+show-fixes = true
+
+# Enable unsafe fixes only when explicitly requested
+unsafe-fixes = false
+
+[lint]
+# Rules to enable
+# E = pycodestyle errors
+# F = Pyflakes
+# I = isort
+# W = pycodestyle warnings
+# UP = pyupgrade (Python upgrade suggestions)
+# B = flake8-bugbear (common bugs)
+# SIM = flake8-simplify
+select = ["E", "F", "I", "W", "UP", "B", "SIM"]
+
+# Rules to ignore
+ignore = [
+    "E501",     # Line too long (handled by formatter)
+    "E402",     # Module level import not at top of file (sometimes needed)
+    "B008",     # Do not perform function calls in argument defaults (FastAPI Depends)
+    "B904",     # Within except clause, raise from err (too verbose for simple cases)
+    "SIM108",   # Use ternary operator (readability preference)
+]
+
+# Allow unused variables when underscore-prefixed
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# Allow autofix for all enabled rules
+fixable = ["ALL"]
+unfixable = []
+
+[lint.per-file-ignores]
+# Tests can have more relaxed rules
+"tests/**/*.py" = ["S101", "PLR2004"]
+# CLI scripts can have print statements
+"cli/**/*.py" = ["T201"]
+# Init files can have unused imports for re-export
+"__init__.py" = ["F401"]
+
+[lint.isort]
+# isort configuration
+known-first-party = ["app"]
+known-third-party = ["fastapi", "pydantic", "stripe", "supabase", "httpx"]
+force-single-line = false
+combine-as-imports = true
+
+[format]
+# Format configuration (if using ruff format)
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+

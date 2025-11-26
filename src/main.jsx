@@ -10,6 +10,9 @@ import './index.css'
 import { supabase } from './lib/supabaseClient'
 import { ACTION_TYPES, logAction } from './services/auditService'
 
+// SECURITY: DEV_BYPASS removed - was a security risk if DEV flag incorrectly set in production
+// For testing, use proper test accounts in the database
+
 function AuthWrapper() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)

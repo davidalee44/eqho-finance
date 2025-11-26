@@ -1,22 +1,35 @@
 import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import audit, cache, customer_mrr, emails, layouts, metrics, revenue_projections, snapshots, stripe_data
+from app.api.v1 import (
+    audit,
+    cache,
+    customer_mrr,
+    emails,
+    flags,
+    layouts,
+    metrics,
+    quickbooks,
+    revenue_projections,
+    snapshots,
+    stripe_data,
+)
 from app.core.config import settings
 from app.services.supabase_service import SupabaseService
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 
 # Set specific loggers to DEBUG for more detailed output
-logging.getLogger('app.services.auth').setLevel(logging.DEBUG)
-logging.getLogger('app.services.supabase_service').setLevel(logging.DEBUG)
-logging.getLogger('app.api.v1.audit').setLevel(logging.INFO)
+logging.getLogger("app.services.auth").setLevel(logging.DEBUG)
+logging.getLogger("app.services.supabase_service").setLevel(logging.DEBUG)
+logging.getLogger("app.api.v1.audit").setLevel(logging.INFO)
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +48,7 @@ async def startup_event():
     SupabaseService.connect()
     logger.info("✅ Startup complete")
 
+
 # CORS middleware for React frontend
 app.add_middleware(
     CORSMiddleware,
@@ -46,14 +60,20 @@ app.add_middleware(
 
 # Include routers
 app.include_router(metrics.router, prefix="/api/v1/metrics", tags=["metrics"])
-app.include_router(revenue_projections.router, prefix="/api/v1/revenue", tags=["Revenue Projections"])
-app.include_router(customer_mrr.router, prefix="/api/v1/customer-mrr", tags=["Customer MRR"])
+app.include_router(
+    revenue_projections.router, prefix="/api/v1/revenue", tags=["Revenue Projections"]
+)
+app.include_router(
+    customer_mrr.router, prefix="/api/v1/customer-mrr", tags=["Customer MRR"]
+)
 app.include_router(stripe_data.router, prefix="/api/v1/stripe", tags=["stripe"])
+app.include_router(quickbooks.router, prefix="/api/v1/quickbooks", tags=["quickbooks"])
 app.include_router(cache.router, prefix="/api/v1/cache", tags=["cache"])
 app.include_router(snapshots.router, prefix="/api/v1/snapshots", tags=["snapshots"])
 app.include_router(emails.router, prefix="/api/v1/emails", tags=["emails"])
 app.include_router(layouts.router, prefix="/api/v1", tags=["layouts"])
 app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
+app.include_router(flags.router, prefix="/api/v1/flags", tags=["flags"])
 
 
 @app.get("/")

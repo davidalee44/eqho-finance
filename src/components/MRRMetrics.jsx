@@ -4,13 +4,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, ChevronDown, ChevronUp, ExternalLink, Loader2, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { apiFetch, ApiError, FALLBACK_METRICS, API_BASE_URL, cacheMetrics, getCachedMetrics } from '@/lib/api';
+import { apiFetch, ApiError, FALLBACK_METRICS, API_BASE_URL, cacheMetrics, getCachedMetrics, fetchCachedMetrics } from '@/lib/api';
+import { DataTimestamp, CachedDataBanner } from '@/components/DataTimestamp';
 
 /**
  * Component to fetch and display MRR metrics with drill-down capabilities
  * All MRR values are backed by actual Stripe subscription data
+ * 
+ * @param {boolean} showDrillDown - Show expandable subscription details
+ * @param {boolean} investorMode - Hide error messages and fallback indicators (for investor presentations)
  */
-export const MRRMetrics = ({ showDrillDown = true }) => {
+export const MRRMetrics = ({ showDrillDown = true, investorMode = false }) => {
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,6 +22,8 @@ export const MRRMetrics = ({ showDrillDown = true }) => {
   const [subscriptions, setSubscriptions] = useState(null);
   const [usingFallback, setUsingFallback] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [dataTimestamp, setDataTimestamp] = useState(null);
+  const [isCachedData, setIsCachedData] = useState(false);
 
   useEffect(() => {
     fetchMRRMetrics();
@@ -27,12 +33,14 @@ export const MRRMetrics = ({ showDrillDown = true }) => {
     setLoading(true);
     setError(null);
     
-    // Try to load from cache first
+    // Try to load from localStorage cache first
     if (useCache) {
       const cached = getCachedMetrics('mrr');
       if (cached) {
         setMetrics(cached);
         setUsingFallback(false);
+        setIsCachedData(true);
+        setDataTimestamp(cached.timestamp);
         setLoading(false);
         // Still try to fetch fresh data in background
         fetchMRRMetrics(false);
@@ -75,18 +83,59 @@ export const MRRMetrics = ({ showDrillDown = true }) => {
 
       setMetrics(newMetrics);
       setUsingFallback(false);
+      setIsCachedData(false);
+      setDataTimestamp(newMetrics.timestamp);
       cacheMetrics('mrr', newMetrics);
       setRetryCount(0);
     } catch (err) {
       console.error('Error fetching MRR metrics:', err);
       
-      // Use fallback values
+      // Try to fetch from database cache first
+      try {
+        const dbCached = await fetchCachedMetrics('comprehensive_metrics');
+        if (dbCached && dbCached.data) {
+          const cachedData = dbCached.data;
+          const newMetrics = {
+            total: {
+              mrr: cachedData.arpu?.total_mrr || 0,
+              arr: (cachedData.arpu?.total_mrr || 0) * 12,
+              customers: cachedData.customer_metrics?.active_customers || 0,
+              subscriptions: cachedData.customer_metrics?.active_customers || 0,
+            },
+            towpilot: {
+              mrr: cachedData.pricing_tiers?.total_mrr || 0,
+              arr: (cachedData.pricing_tiers?.total_mrr || 0) * 12,
+              customers: cachedData.pricing_tiers?.total_customers || 0,
+              acv: 0,
+            },
+            other: {
+              mrr: (cachedData.arpu?.total_mrr || 0) - (cachedData.pricing_tiers?.total_mrr || 0),
+              arr: ((cachedData.arpu?.total_mrr || 0) - (cachedData.pricing_tiers?.total_mrr || 0)) * 12,
+              customers: (cachedData.customer_metrics?.active_customers || 0) - (cachedData.pricing_tiers?.total_customers || 0),
+            },
+            timestamp: dbCached.fetched_at,
+          };
+          setMetrics(newMetrics);
+          setDataTimestamp(dbCached.fetched_at);
+          setIsCachedData(true);
+          setUsingFallback(false);
+          setError(err instanceof ApiError ? err : new ApiError(err.message, 'unknown', null, API_BASE_URL));
+          setLoading(false);
+          return;
+        }
+      } catch (dbErr) {
+        console.warn('Failed to fetch from database cache:', dbErr);
+      }
+      
+      // Only use null fallback if no cached data available
       const fallbackMetrics = {
         ...FALLBACK_METRICS,
-        timestamp: new Date().toISOString(),
+        timestamp: null,
       };
       setMetrics(fallbackMetrics);
       setUsingFallback(true);
+      setIsCachedData(false);
+      setDataTimestamp(null);
       setError(err instanceof ApiError ? err : new ApiError(err.message, 'unknown', null, API_BASE_URL));
     } finally {
       setLoading(false);
@@ -148,6 +197,10 @@ export const MRRMetrics = ({ showDrillDown = true }) => {
   };
 
   const formatCurrency = (amount) => {
+    // Handle null/undefined/NaN values for proper fallback display
+    if (amount === null || amount === undefined || Number.isNaN(amount)) {
+      return '--';
+    }
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -157,6 +210,10 @@ export const MRRMetrics = ({ showDrillDown = true }) => {
   };
 
   const formatCurrencyK = (amount) => {
+    // Handle null/undefined/NaN values for proper fallback display
+    if (amount === null || amount === undefined || Number.isNaN(amount)) {
+      return '--';
+    }
     if (amount >= 1000) {
       return `$${(amount / 1000).toFixed(1)}K`;
     }
@@ -265,7 +322,8 @@ export const MRRMetrics = ({ showDrillDown = true }) => {
 
   return (
     <>
-      {error && metrics && (
+      {/* Hide error warnings in investor mode */}
+      {error && metrics && !investorMode && (
         <Card className="border-amber-200 bg-amber-50/50 mb-4">
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
@@ -296,19 +354,24 @@ export const MRRMetrics = ({ showDrillDown = true }) => {
             <div>
               <CardTitle className="text-base">MRR Breakdown</CardTitle>
               <CardDescription className="text-xs">
-                {usingFallback ? (
+                {usingFallback && !investorMode ? (
                   <span className="flex items-center gap-1 text-amber-600">
                     <WifiOff className="h-3 w-3" />
-                    Using fallback values (API unavailable)
+                    No data available (API unavailable)
                   </span>
                 ) : (
-                  `Calculated from all active Stripe subscriptions • Last updated: ${new Date(metrics.timestamp).toLocaleString()}`
+                  <DataTimestamp
+                    timestamp={dataTimestamp}
+                    source="Stripe"
+                    isCached={isCachedData}
+                    onRefresh={() => fetchMRRMetrics(false)}
+                  />
                 )}
               </CardDescription>
             </div>
-            {usingFallback && (
+            {isCachedData && !investorMode && (
               <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
-                Offline Mode
+                Cached Data
               </Badge>
             )}
           </div>

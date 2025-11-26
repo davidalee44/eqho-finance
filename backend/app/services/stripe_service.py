@@ -1,15 +1,114 @@
+import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import stripe
 
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
+
 stripe.api_key = settings.STRIPE_SECRET_KEY
+
+# Pagination constants
+DEFAULT_PAGE_SIZE = 100
+MAX_ITERATIONS = 100  # Safety limit to prevent infinite loops
 
 
 class StripeService:
     """Service for interacting with Stripe API and calculating metrics"""
+
+    @staticmethod
+    async def _paginate_stripe_list(
+        list_fn: Callable,
+        params: Dict[str, Any],
+        item_processor: Optional[Callable] = None,
+        filter_fn: Optional[Callable] = None,
+        page_size: int = DEFAULT_PAGE_SIZE,
+    ) -> List[Dict]:
+        """
+        Generic pagination helper for Stripe list APIs.
+
+        Ensures complete data retrieval by checking both has_more flag
+        AND verifying if the page was full (hit the limit).
+
+        Args:
+            list_fn: Stripe list function (e.g., stripe.Customer.list)
+            params: Base parameters for the API call
+            item_processor: Optional function to transform each item
+            filter_fn: Optional function to filter items (return True to include)
+            page_size: Number of items per page (default 100)
+
+        Returns:
+            List of all items (processed and filtered)
+        """
+        results = []
+        starting_after = None
+        iteration = 0
+        total_fetched = 0
+
+        while iteration < MAX_ITERATIONS:
+            iteration += 1
+
+            # Build params with pagination
+            page_params = {**params, "limit": page_size}
+            if starting_after:
+                page_params["starting_after"] = starting_after
+
+            response = list_fn(**page_params)
+            page_count = len(response.data)
+            total_fetched += page_count
+
+            logger.debug(
+                f"Pagination: iteration={iteration}, page_count={page_count}, "
+                f"total_fetched={total_fetched}, has_more={response.has_more}"
+            )
+
+            for item in response.data:
+                # Apply filter if provided
+                if filter_fn and not filter_fn(item):
+                    continue
+
+                # Process item or use as-is
+                if item_processor:
+                    processed = item_processor(item)
+                    if processed is not None:
+                        results.append(processed)
+                else:
+                    results.append(item)
+
+            # Check if we should continue - use BOTH has_more and page fullness
+            # This ensures we don't miss data if has_more is incorrectly set
+            if not response.has_more:
+                break
+
+            # Safety check: if page wasn't full but has_more is True, trust has_more
+            # If page was full, definitely continue
+            if page_count < page_size:
+                # Page wasn't full - API says there's more but page isn't full
+                # This shouldn't happen normally, but trust the has_more flag
+                logger.warning(
+                    f"Pagination warning: has_more=True but page not full "
+                    f"(got {page_count}, expected {page_size})"
+                )
+
+            if not response.data:
+                # Empty page - shouldn't happen with has_more=True
+                logger.warning("Empty page received despite has_more=True")
+                break
+
+            starting_after = response.data[-1].id
+
+        if iteration >= MAX_ITERATIONS:
+            logger.error(
+                f"Pagination hit MAX_ITERATIONS ({MAX_ITERATIONS}). "
+                f"Total fetched: {total_fetched}. Data may be incomplete."
+            )
+
+        logger.info(
+            f"Pagination complete: {len(results)} results in {iteration} iterations"
+        )
+        return results
 
     @staticmethod
     async def get_all_customers(has_tag: Optional[str] = None) -> List[Dict]:
@@ -19,94 +118,76 @@ class StripeService:
         Args:
             has_tag: Filter customers by metadata tag (e.g., "tow" for TowPilot)
         """
-        customers = []
-        starting_after = None
 
-        while True:
-            params = {"limit": 100}
-            if starting_after:
-                params["starting_after"] = starting_after
+        def process_customer(customer):
+            return {
+                "id": customer.id,
+                "email": customer.email,
+                "created": customer.created,
+                "metadata": customer.metadata,
+            }
 
-            response = stripe.Customer.list(**params)
+        def filter_by_tag(customer):
+            if not has_tag:
+                return True
+            tags = customer.get("metadata", {}).get("tags", "")
+            return has_tag in tags
 
-            for customer in response.data:
-                # Filter by tag if specified
-                if has_tag:
-                    tags = customer.get("metadata", {}).get("tags", "")
-                    if has_tag not in tags:
-                        continue
-
-                customers.append(
-                    {
-                        "id": customer.id,
-                        "email": customer.email,
-                        "created": customer.created,
-                        "metadata": customer.metadata,
-                    }
-                )
-
-            if not response.has_more:
-                break
-
-            starting_after = response.data[-1].id
-
-        return customers
+        return await StripeService._paginate_stripe_list(
+            list_fn=stripe.Customer.list,
+            params={},
+            item_processor=process_customer,
+            filter_fn=filter_by_tag if has_tag else None,
+        )
 
     @staticmethod
     async def get_active_subscriptions(
         customer_ids: Optional[List[str]] = None,
     ) -> List[Dict]:
         """Fetch active subscriptions, optionally filtered by customer IDs"""
-        subscriptions = []
-        starting_after = None
+        customer_id_set = set(customer_ids) if customer_ids else None
 
-        while True:
-            params = {"limit": 100, "status": "active"}
-            if starting_after:
-                params["starting_after"] = starting_after
-
-            response = stripe.Subscription.list(**params)
-
-            for sub in response.data:
-                # Filter by customer IDs if specified
-                if customer_ids and sub.customer not in customer_ids:
-                    continue
-
-                subscriptions.append(
+        def process_subscription(sub):
+            return {
+                "id": sub.id,
+                "customer": sub.customer,
+                "status": sub.status,
+                "current_period_start": sub.current_period_start,
+                "current_period_end": sub.current_period_end,
+                "items": [
                     {
-                        "id": sub.id,
-                        "customer": sub.customer,
-                        "status": sub.status,
-                        "current_period_start": sub.current_period_start,
-                        "current_period_end": sub.current_period_end,
-                        "items": [
-                            {
-                                "price": item.price.id,
-                                "amount": item.price.unit_amount,
-                                "currency": item.price.currency,
-                                "interval": item.price.recurring.interval
-                                if item.price.recurring
-                                else None,
-                                "interval_count": item.price.recurring.interval_count
-                                if item.price.recurring
-                                else 1,
-                            }
-                            for item in sub["items"].data
-                        ],
+                        "price": item.price.id,
+                        "amount": item.price.unit_amount,
+                        "currency": item.price.currency,
+                        "interval": item.price.recurring.interval
+                        if item.price.recurring
+                        else None,
+                        "interval_count": item.price.recurring.interval_count
+                        if item.price.recurring
+                        else 1,
                     }
-                )
+                    for item in sub[
+                        "items"
+                    ].data  # Stripe objects support dict-style access
+                ],
+            }
 
-            if not response.has_more:
-                break
+        def filter_by_customer(sub):
+            if not customer_id_set:
+                return True
+            return sub.customer in customer_id_set
 
-            starting_after = response.data[-1].id
-
-        return subscriptions
+        return await StripeService._paginate_stripe_list(
+            list_fn=stripe.Subscription.list,
+            params={"status": "active"},
+            item_processor=process_subscription,
+            filter_fn=filter_by_customer if customer_ids else None,
+        )
 
     @staticmethod
     async def calculate_mrr(subscriptions: List[Dict]) -> float:
         """Calculate Monthly Recurring Revenue from subscriptions
-        
+
         Excludes $0 subscriptions (trials, free tiers) from MRR calculation.
         """
         mrr = 0.0
@@ -114,11 +195,11 @@ class StripeService:
         for sub in subscriptions:
             for item in sub["items"]:
                 amount = item["amount"] / 100  # Convert cents to dollars
-                
+
                 # Skip $0 subscriptions (trials, free tiers)
                 if amount == 0:
                     continue
-                
+
                 interval = item["interval"]
                 interval_count = item.get("interval_count", 1)
 
@@ -173,28 +254,39 @@ class StripeService:
         end_date = datetime.now()
         start_date = end_date - timedelta(days=months * 30)
 
-        # Fetch charges/invoices for the time period
-        charges = stripe.Charge.list(
-            created={
-                "gte": int(start_date.timestamp()),
-                "lte": int(end_date.timestamp()),
-            },
-            limit=100,
-        )
-
         # Group by month
         monthly_revenue = {}
-        for charge in charges.auto_paging_iter():
+
+        def process_charge(charge):
             if not charge.paid:
-                continue
+                return None
 
             month_key = datetime.fromtimestamp(charge.created).strftime("%Y-%m")
-            amount = charge.amount / 100
+            return {
+                "month_key": month_key,
+                "amount": charge.amount / 100,
+            }
 
+        # Fetch charges using pagination helper
+        charges = await StripeService._paginate_stripe_list(
+            list_fn=stripe.Charge.list,
+            params={
+                "created": {
+                    "gte": int(start_date.timestamp()),
+                    "lte": int(end_date.timestamp()),
+                },
+            },
+            item_processor=process_charge,
+        )
+
+        # Aggregate by month
+        for charge_data in charges:
+            if charge_data is None:
+                continue
+            month_key = charge_data["month_key"]
             if month_key not in monthly_revenue:
                 monthly_revenue[month_key] = 0.0
-
-            monthly_revenue[month_key] += amount
+            monthly_revenue[month_key] += charge_data["amount"]
 
         # Format as list
         result = []
@@ -210,6 +302,64 @@ class StripeService:
         return result
 
     @staticmethod
+    async def _get_all_subscriptions_with_items() -> List[Dict]:
+        """
+        Fetch all subscriptions (active and canceled) with item details.
+        Uses pagination helper to ensure complete data retrieval.
+        """
+
+        def process_subscription(sub):
+            return {
+                "id": sub.id,
+                "customer": sub.customer,
+                "status": sub.status,
+                "canceled_at": sub.canceled_at,
+                "created": sub.created,
+                "current_period_start": sub.current_period_start,
+                "items": [
+                    {
+                        "price": item.price.id,
+                        "amount": item.price.unit_amount,
+                        "currency": item.price.currency,
+                        "interval": item.price.recurring.interval
+                        if item.price.recurring
+                        else None,
+                    }
+                    for item in sub[
+                        "items"
+                    ].data  # Stripe objects support dict-style access
+                ],
+            }
+
+        return await StripeService._paginate_stripe_list(
+            list_fn=stripe.Subscription.list,
+            params={},
+            item_processor=process_subscription,
+        )
+
+    @staticmethod
+    async def _get_all_subscriptions_basic() -> List[Dict]:
+        """
+        Fetch all subscriptions (active and canceled) with basic details.
+        Uses pagination helper to ensure complete data retrieval.
+        """
+
+        def process_subscription(sub):
+            return {
+                "id": sub.id,
+                "customer": sub.customer,
+                "status": sub.status,
+                "canceled_at": sub.canceled_at,
+                "created": sub.created,
+            }
+
+        return await StripeService._paginate_stripe_list(
+            list_fn=stripe.Subscription.list,
+            params={},
+            item_processor=process_subscription,
+        )
+
+    @staticmethod
     async def calculate_churn_rate(months: int = 3) -> Dict:
         """
         Calculate customer and revenue churn rates from Stripe data
@@ -223,44 +373,8 @@ class StripeService:
         end_date = datetime.now()
         start_date = end_date - timedelta(days=months * 30)
 
-        # Get all subscriptions (active and canceled)
-        all_subscriptions = []
-        starting_after = None
-
-        while True:
-            params = {"limit": 100}
-            if starting_after:
-                params["starting_after"] = starting_after
-
-            response = stripe.Subscription.list(**params)
-
-            for sub in response.data:
-                all_subscriptions.append(
-                    {
-                        "id": sub.id,
-                        "customer": sub.customer,
-                        "status": sub.status,
-                        "canceled_at": sub.canceled_at,
-                        "created": sub.created,
-                        "current_period_start": sub.current_period_start,
-                        "items": [
-                            {
-                                "price": item.price.id,
-                                "amount": item.price.unit_amount,
-                                "currency": item.price.currency,
-                                "interval": item.price.recurring.interval
-                                if item.price.recurring
-                                else None,
-                            }
-                            for item in sub["items"].data
-                        ],
-                    }
-                )
-
-            if not response.has_more:
-                break
-
-            starting_after = response.data[-1].id
+        # Get all subscriptions (active and canceled) using pagination helper
+        all_subscriptions = await StripeService._get_all_subscriptions_with_items()
 
         # Calculate MRR for active subscriptions
         active_subscriptions = [s for s in all_subscriptions if s["status"] == "active"]
@@ -368,32 +482,8 @@ class StripeService:
         Returns:
             Dict with customer counts, growth metrics, and historical data
         """
-        # Get all subscriptions (active and canceled)
-        all_subscriptions = []
-        starting_after = None
-
-        while True:
-            params = {"limit": 100}
-            if starting_after:
-                params["starting_after"] = starting_after
-
-            response = stripe.Subscription.list(**params)
-
-            for sub in response.data:
-                all_subscriptions.append(
-                    {
-                        "id": sub.id,
-                        "customer": sub.customer,
-                        "status": sub.status,
-                        "canceled_at": sub.canceled_at,
-                        "created": sub.created,
-                    }
-                )
-
-            if not response.has_more:
-                break
-
-            starting_after = response.data[-1].id
+        # Get all subscriptions (active and canceled) using pagination helper
+        all_subscriptions = await StripeService._get_all_subscriptions_basic()
 
         # Active customers (unique)
         active_subscriptions = [s for s in all_subscriptions if s["status"] == "active"]
@@ -467,38 +557,38 @@ class StripeService:
         Returns:
             Dict with retention rates for TowPilot, Other Products, and Overall
         """
-        # Get all subscriptions
-        all_subscriptions = []
-        starting_after = None
+        # Cache for customer metadata to avoid repeated API calls
+        customer_cache = {}
 
-        while True:
-            params = {"limit": 100}
-            if starting_after:
-                params["starting_after"] = starting_after
+        def process_subscription_with_segment(sub):
+            # Get customer metadata to identify TowPilot customers
+            customer_id = sub.customer
+            if customer_id not in customer_cache:
+                try:
+                    customer = stripe.Customer.retrieve(customer_id)
+                    tags = customer.get("metadata", {}).get("tags", "")
+                    customer_cache[customer_id] = (
+                        "tow" in tags.lower() if tags else False
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to retrieve customer {customer_id}: {e}")
+                    customer_cache[customer_id] = False
 
-            response = stripe.Subscription.list(**params)
+            return {
+                "id": sub.id,
+                "customer": customer_id,
+                "status": sub.status,
+                "canceled_at": sub.canceled_at,
+                "created": sub.created,
+                "is_towpilot": customer_cache[customer_id],
+            }
 
-            for sub in response.data:
-                # Get customer metadata to identify TowPilot customers
-                customer = stripe.Customer.retrieve(sub.customer)
-                tags = customer.get("metadata", {}).get("tags", "")
-                is_towpilot = "tow" in tags.lower() if tags else False
-
-                all_subscriptions.append(
-                    {
-                        "id": sub.id,
-                        "customer": sub.customer,
-                        "status": sub.status,
-                        "canceled_at": sub.canceled_at,
-                        "created": sub.created,
-                        "is_towpilot": is_towpilot,
-                    }
-                )
-
-            if not response.has_more:
-                break
-
-            starting_after = response.data[-1].id
+        # Get all subscriptions using pagination helper
+        all_subscriptions = await StripeService._paginate_stripe_list(
+            list_fn=stripe.Subscription.list,
+            params={},
+            item_processor=process_subscription_with_segment,
+        )
 
         # Calculate retention for TowPilot
         towpilot_subs = [s for s in all_subscriptions if s["is_towpilot"]]
@@ -628,48 +718,13 @@ class StripeService:
         Returns:
             Dict with gross retention, net retention, and expansion revenue metrics
         """
-        # Get all subscriptions with historical data
-        all_subscriptions = []
-        starting_after = None
-
         # Look back 12 months for retention calculation
         end_date = datetime.now()
         start_date = end_date - timedelta(days=365)
         start_timestamp = int(start_date.timestamp())
 
-        while True:
-            params = {"limit": 100}
-            if starting_after:
-                params["starting_after"] = starting_after
-
-            response = stripe.Subscription.list(**params)
-
-            for sub in response.data:
-                all_subscriptions.append(
-                    {
-                        "id": sub.id,
-                        "customer": sub.customer,
-                        "status": sub.status,
-                        "canceled_at": sub.canceled_at,
-                        "created": sub.created,
-                        "items": [
-                            {
-                                "price": item.price.id,
-                                "amount": item.price.unit_amount,
-                                "currency": item.price.currency,
-                                "interval": item.price.recurring.interval
-                                if item.price.recurring
-                                else None,
-                            }
-                            for item in sub["items"].data
-                        ],
-                    }
-                )
-
-            if not response.has_more:
-                break
-
-            starting_after = response.data[-1].id
+        # Get all subscriptions with historical data using pagination helper
+        all_subscriptions = await StripeService._get_all_subscriptions_with_items()
 
         # Subscriptions active at start of period
         active_at_start = [

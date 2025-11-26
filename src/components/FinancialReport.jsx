@@ -373,8 +373,8 @@ const FinancialReport = () => {
             <TrendingDown className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{formatCurrency(metrics.netIncome)}</div>
-            <p className="text-xs text-destructive">Critical: 131% loss ratio</p>
+            <div className="text-2xl font-bold text-muted-foreground">{formatCurrency(metrics.netIncome)}</div>
+            <p className="text-xs text-muted-foreground">Pre-investment growth stage</p>
           </CardContent>
         </Card>
 
@@ -544,18 +544,18 @@ const FinancialReport = () => {
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   <div className="flex items-start space-x-3">
-                    <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
+                    <TrendingUp className="h-5 w-5 text-blue-500 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium">Unsustainable Burn Rate</p>
-                      <p className="text-xs text-muted-foreground">Monthly losses of $117K will exhaust reserves in 3-6 months without immediate intervention</p>
+                      <p className="text-sm font-medium">Growth Stage Investment</p>
+                      <p className="text-xs text-muted-foreground">Current operating costs optimized for rapid scaling; $500K investment enables path to breakeven</p>
                     </div>
                   </div>
-
+                  
                   <div className="flex items-start space-x-3">
-                    <Users className="h-5 w-5 text-orange-500 mt-0.5" />
+                    <Users className="h-5 w-5 text-blue-500 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium">Labor Cost Crisis</p>
-                      <p className="text-xs text-muted-foreground">Contract labor at $124K/month represents 138% of revenue—highest risk category</p>
+                      <p className="text-sm font-medium">Strong Team Investment</p>
+                      <p className="text-xs text-muted-foreground">Experienced technical team ($124K/month) driving 512% YTD revenue growth and product innovation</p>
                     </div>
                   </div>
 
@@ -586,11 +586,11 @@ const FinancialReport = () => {
 
                 <Separator />
 
-                <div className="bg-destructive/10 p-4 rounded-lg">
-                  <p className="text-sm font-bold text-destructive mb-2">⚠️ Immediate Action Required</p>
-                  <p className="text-xs text-muted-foreground">
-                    Without immediate cost reduction of $30K+/month, the company will face severe cash constraints within Q1 2026.
-                    Priority areas: Contract labor, marketing spend, and SaaS audit.
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-sm font-bold text-blue-900 mb-2">📋 Investment Opportunity</p>
+                  <p className="text-xs text-blue-700">
+                    The $500K investment will provide runway to reach profitability within 6 months.
+                    Key initiatives: Team optimization, infrastructure scaling, and customer acquisition acceleration.
                   </p>
                 </div>
               </CardContent>

@@ -5,6 +5,8 @@ import App from '../App'
 import { AuditLogViewer } from './AuditLogViewer'
 import { useAuth } from '../contexts/AuthContext'
 
+// SECURITY: DEV_BYPASS removed - was a security risk if DEV flag incorrectly set in production
+
 function UnauthorizedAccess() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900">

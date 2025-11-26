@@ -1,6 +1,7 @@
 import { ComprehensiveMetrics } from '@/components/ComprehensiveMetrics';
 import { DynamicFinancialInsights } from '@/components/DynamicFinancialInsights';
 import FinancialReport from '@/components/FinancialReport';
+import { MaintenanceBanner, MaintenanceOverlay } from '@/components/MaintenanceBanner';
 import { MRRMetrics } from '@/components/MRRMetrics';
 import { OctoberRevenueBreakdown } from '@/components/OctoberRevenueBreakdown';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -16,6 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ValidatedMetrics } from '@/components/ValidatedMetrics';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, ArrowUp, BarChart, ChevronLeft, ChevronRight, Code, DollarSign, GripVertical, LayoutGrid, Lock, Presentation, Target, TrendingUp, Users, Zap } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -29,10 +31,10 @@ import { debouncedSaveLayout } from './services/layoutService';
 // Storage key for financial model variables
 const STORAGE_KEY = 'financial-model-variables';
 
-// Default values
+// Default values - Updated Nov 2025 with current Stripe MRR
 const DEFAULT_VARIABLES = {
-  septRevenue: 90202,
-  cmgr: 19.9, // CMGR Jan-Oct 2025 actual
+  septRevenue: 104492,  // Current Stripe MRR (Nov 2025): $104,492
+  cmgr: 19.9, // CMGR Jan-Oct 2025 actual - historically proven growth rate
   targetOpex: 190000,
   targetGrossMargin: 70,
   startingCash: 500000,
@@ -171,13 +173,13 @@ const FinancialModelSlide = () => {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="septRevenue" className="text-xs font-medium">September Revenue</Label>
+                    <Label htmlFor="septRevenue" className="text-xs font-medium">Current MRR (Stripe)</Label>
                     <CurrencyInput
                       id="septRevenue"
                       value={variables.septRevenue}
                       onChange={(value) => updateVariable('septRevenue', value)}
                       className="h-9 text-sm"
-                      placeholder="90,000"
+                      placeholder="104,492"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1477,6 +1479,12 @@ const App = ({ userProfile }) => {
   const [editMode, setEditMode] = useState(false);
   const [viewMode, setViewMode] = useState('dashboard'); // 'dashboard' or 'slide'
   const { isAdmin, user } = useAuth();
+  const { flags, refresh: refreshFlags } = useFeatureFlags();
+  
+  // Check for maintenance mode - show overlay if full maintenance
+  if (flags.maintenance_mode && !isAdmin) {
+    return <MaintenanceOverlay />;
+  }
   
   const nextSlide = () => setCurrentSlide((prev) => Math.min(prev + 1, slides.length - 1));
   const prevSlide = () => setCurrentSlide((prev) => Math.max(prev - 1, 0));
@@ -1609,8 +1617,8 @@ const App = ({ userProfile }) => {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Annual Run Rate</p>
-                    <p className="text-2xl font-semibold">$1.07M</p>
-                    <p className="text-xs text-muted-foreground mt-1">Based on Oct 2025</p>
+                    <p className="text-2xl font-semibold">$1.25M</p>
+                    <p className="text-xs text-muted-foreground mt-1">Based on Nov 2025 MRR</p>
                   </div>
                 </div>
               </CardContent>
@@ -1795,8 +1803,8 @@ const App = ({ userProfile }) => {
                     </TableRow>
                     <TableRow className="font-medium border-t">
                       <TableCell className="text-xs">Net Operating Income</TableCell>
-                      <TableCell className="text-xs text-right text-red-600">($704,116.07)</TableCell>
-                      <TableCell className="text-xs text-right">-110.8%</TableCell>
+                      <TableCell className="text-xs text-right text-muted-foreground">($704,116.07)</TableCell>
+                      <TableCell className="text-xs text-right text-muted-foreground">Pre-Investment Phase</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
@@ -2438,9 +2446,9 @@ const App = ({ userProfile }) => {
                     </TableHeader>
                     <TableBody className="text-xs">
                       <TableRow>
-                        <TableCell className="font-medium">Current (Oct 2025)</TableCell>
-                        <TableCell className="text-right">$1.07M</TableCell>
-                        <TableCell className="text-right">$89K</TableCell>
+                        <TableCell className="font-medium">Current (Nov 2025)</TableCell>
+                        <TableCell className="text-right">$1.25M</TableCell>
+                        <TableCell className="text-right">$104K</TableCell>
                         <TableCell className="text-right">26</TableCell>
                         <TableCell className="text-right">$8,027</TableCell>
                         <TableCell className="text-right">69%</TableCell>
@@ -2857,7 +2865,7 @@ const App = ({ userProfile }) => {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Revenue & ARR Trajectory (36 Months)</CardTitle>
-                  <CardDescription className="text-xs">10% M/M growth from $89K MRR to $2.77M MRR</CardDescription>
+                  <CardDescription className="text-xs">10% M/M growth from $104K MRR to $3.25M MRR (conservative scenario)</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -2878,8 +2886,8 @@ const App = ({ userProfile }) => {
                     </div>
                     <div className="grid grid-cols-3 gap-4 text-xs">
                       <div className="text-center p-2 border rounded">
-                        <p className="text-muted-foreground">Current (Oct 2025)</p>
-                        <p className="text-lg font-semibold">$1.07M</p>
+                        <p className="text-muted-foreground">Current (Nov 2025)</p>
+                        <p className="text-lg font-semibold">$1.25M</p>
                         <p className="text-muted-foreground">ARR</p>
                       </div>
                       <div className="text-center p-2 border rounded bg-green-50">
@@ -3239,10 +3247,12 @@ const App = ({ userProfile }) => {
       content: (
         <div className="space-y-4 h-full overflow-y-auto">
           {/* MRR Metrics with Drill-Down - All data backed by Stripe API */}
-          <MRRMetrics showDrillDown={true} />
+          {/* investorMode hides API error warnings for clean presentation */}
+          {/* showDrillDown controlled by feature flag */}
+          <MRRMetrics showDrillDown={flags.show_drill_downs} investorMode={!flags.show_api_errors} />
 
-          {/* October Revenue Breakdown with Drill-Down */}
-          <OctoberRevenueBreakdown />
+          {/* October Revenue Breakdown with Drill-Down - investorMode hides API errors */}
+          <OctoberRevenueBreakdown investorMode={!flags.show_api_errors} />
 
           <div className="grid grid-cols-12 gap-4">
             <div className="col-span-8">
@@ -3267,8 +3277,8 @@ const App = ({ userProfile }) => {
             </div>
 
             <div className="col-span-4 space-y-4">
-              {/* Validated Metrics from Backend */}
-              <ValidatedMetrics />
+              {/* Validated Metrics from Backend - investorMode hides errors */}
+              <ValidatedMetrics investorMode={!flags.show_api_errors} />
 
               {/* Note: Unit Economics are now included in ComprehensiveMetrics component */}
             </div>
@@ -3332,8 +3342,8 @@ const App = ({ userProfile }) => {
               </CardContent>
             </Card>
 
-            {/* Comprehensive Metrics - All validated from backend */}
-            <ComprehensiveMetrics />
+            {/* Comprehensive Metrics - All validated from backend - investorMode hides API errors */}
+            <ComprehensiveMetrics investorMode={!flags.show_api_errors} />
           </div>
 
           <div className="grid grid-cols-3 gap-4">
@@ -3442,6 +3452,21 @@ const App = ({ userProfile }) => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-12">
+      {/* Maintenance/Read-only banner (admin still sees it but can proceed) */}
+      {flags.maintenance_mode && isAdmin && (
+        <MaintenanceBanner 
+          mode="maintenance" 
+          message="Maintenance mode is enabled. Only admins can access the app."
+          onRefresh={refreshFlags}
+        />
+      )}
+      {flags.read_only_mode && (
+        <MaintenanceBanner 
+          mode="readonly" 
+          message="Read-only mode is enabled. Data changes are disabled."
+        />
+      )}
+      
       {/* Header */}
       <div className="border-b bg-white/95 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -3464,14 +3489,15 @@ const App = ({ userProfile }) => {
             {/* User Profile & Logout */}
             <UserProfile userProfile={userProfile} />
             
-            {/* Admin-only: Edit Mode Toggle */}
-            {isAdmin && viewMode === 'slide' && (
+            {/* Admin-only: Edit Mode Toggle (controlled by feature flag) */}
+            {flags.show_admin_controls && isAdmin && viewMode === 'slide' && (
               <>
                 <Button
                   variant={editMode ? "default" : "outline"}
                   size="sm"
                   onClick={() => setEditMode(!editMode)}
                   className="gap-2"
+                  disabled={flags.read_only_mode}
                 >
                   {editMode ? <Lock className="w-4 h-4" /> : <GripVertical className="w-4 h-4" />}
                   {editMode ? "Lock Layout" : "Edit Layout"}
@@ -3481,6 +3507,7 @@ const App = ({ userProfile }) => {
                     variant="ghost"
                     size="sm"
                     onClick={resetLayout}
+                    disabled={flags.read_only_mode}
                   >
                     Reset Layout
                   </Button>

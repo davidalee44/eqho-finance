@@ -3,30 +3,37 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, AlertCircle, RefreshCw, Wifi } from 'lucide-react';
-import { apiFetch, ApiError, API_BASE_URL, cacheMetrics, getCachedMetrics } from '@/lib/api';
+import { apiFetch, ApiError, API_BASE_URL, cacheMetrics, getCachedMetrics, fetchCachedMetrics } from '@/lib/api';
+import { DataTimestamp } from '@/components/DataTimestamp';
 
 /**
  * Component to fetch and display validated churn and ARPU metrics from backend
+ * 
+ * @param {boolean} investorMode - Hide error messages and technical details (for investor presentations)
  */
-export const ValidatedMetrics = () => {
+export const ValidatedMetrics = ({ investorMode = false }) => {
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [usingCache, setUsingCache] = useState(false);
+  const [dataTimestamp, setDataTimestamp] = useState(null);
 
   useEffect(() => {
     fetchMetrics();
   }, []);
 
-  const fetchMetrics = async (useCache = true) => {
+  const fetchMetrics = async (useLocalCache = true) => {
     setLoading(true);
     setError(null);
     
-    // Try to load from cache first
-    if (useCache) {
+    // Try to load from localStorage cache first
+    if (useLocalCache) {
       const cached = getCachedMetrics('validated-metrics');
       if (cached) {
         setMetrics(cached);
+        setUsingCache(true);
+        setDataTimestamp(cached.timestamp);
         setLoading(false);
         // Still try to fetch fresh data in background
         fetchMetrics(false);
@@ -37,11 +44,35 @@ export const ValidatedMetrics = () => {
     try {
       const data = await apiFetch('/api/v1/stripe/churn-and-arpu?months=3');
       setMetrics(data);
+      setUsingCache(false);
+      setDataTimestamp(data.timestamp);
       cacheMetrics('validated-metrics', data);
       setRetryCount(0);
     } catch (err) {
       console.error('Error fetching validated metrics:', err);
       setError(err instanceof ApiError ? err : new ApiError(err.message, 'unknown', null, API_BASE_URL));
+      
+      // Try to fetch from database cache
+      try {
+        const dbCached = await fetchCachedMetrics('churn_arpu');
+        if (dbCached && dbCached.data) {
+          setMetrics(dbCached.data);
+          setUsingCache(true);
+          setDataTimestamp(dbCached.fetched_at);
+          setLoading(false);
+          return;
+        }
+      } catch (dbErr) {
+        console.warn('Failed to fetch from database cache:', dbErr);
+      }
+      
+      // Try localStorage cache as last resort
+      const cached = getCachedMetrics('validated-metrics');
+      if (cached) {
+        setMetrics(cached);
+        setUsingCache(true);
+        setDataTimestamp(cached.timestamp);
+      }
     } finally {
       setLoading(false);
     }
@@ -68,7 +99,11 @@ export const ValidatedMetrics = () => {
     );
   }
 
+  // In investor mode, hide error state completely and show nothing
   if (error && !metrics) {
+    if (investorMode) {
+      return null; // Hide component entirely in investor mode when there's an error
+    }
     const apiError = error instanceof ApiError ? error : null;
     return (
       <Card className="border-2 border-red-200">
@@ -134,9 +169,14 @@ export const ValidatedMetrics = () => {
         <CardTitle className="text-sm text-green-900">
           ✅ Validated Metrics (Backend Calculated)
         </CardTitle>
-        <p className="text-xs text-green-700 mt-1">
-          Calculated from Stripe API data • Last updated: {new Date(metrics.timestamp).toLocaleString()}
-        </p>
+        <div className="mt-1">
+          <DataTimestamp
+            timestamp={dataTimestamp}
+            source="Stripe"
+            isCached={usingCache}
+            onRefresh={() => fetchMetrics(false)}
+          />
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Churn Metrics */}

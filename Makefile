@@ -1,4 +1,4 @@
-.PHONY: help install dev build clean test
+.PHONY: help install dev build clean test lint-py lint-py-fix lint-py-unsafe lint-all
 
 help:
 	@echo "Eqho Due Diligence - Available Commands:"
@@ -11,6 +11,12 @@ help:
 	@echo "  make test             - Run tests"
 	@echo "  make clean            - Clean build artifacts and cache"
 	@echo "  make setup            - Complete project setup"
+	@echo ""
+	@echo "Linting Commands:"
+	@echo "  make lint-py          - Check Python code (no changes)"
+	@echo "  make lint-py-fix      - Auto-fix Python code (safe fixes only)"
+	@echo "  make lint-py-unsafe   - Auto-fix Python code (including unsafe)"
+	@echo "  make lint-all         - Run all linters (frontend + backend)"
 	@echo ""
 	@echo "Docker Commands:"
 	@echo "  make docker-up        - Start all services (MongoDB + Backend)"
@@ -98,4 +104,55 @@ docker-clean:
 	@echo "Removing Docker volumes (this will delete all MongoDB data)..."
 	docker-compose down -v
 	@echo "⚠️  MongoDB data deleted"
+
+# Linting commands with memory-safe defaults
+# Ruff is configured in backend/ruff.toml
+
+lint-py:
+	@echo "🔍 Checking Python code with Ruff..."
+	@cd backend && source .venv/bin/activate && ruff check . --config ruff.toml
+	@echo "✅ Python lint check complete"
+
+lint-py-fix:
+	@echo "🔧 Auto-fixing Python code with Ruff (safe fixes only)..."
+	@cd backend && source .venv/bin/activate && ruff check . --fix --config ruff.toml
+	@echo "✅ Safe fixes applied"
+
+lint-py-unsafe:
+	@echo "⚠️  Auto-fixing Python code with Ruff (including unsafe fixes)..."
+	@cd backend && source .venv/bin/activate && ruff check . --fix --unsafe-fixes --config ruff.toml
+	@echo "✅ All fixes applied (review changes before committing)"
+
+lint-py-format:
+	@echo "📐 Formatting Python code with Ruff..."
+	@cd backend && source .venv/bin/activate && ruff format . --config ruff.toml
+	@echo "✅ Python formatting complete"
+
+lint-py-diff:
+	@echo "📋 Showing what Ruff would change (dry run)..."
+	@cd backend && source .venv/bin/activate && ruff check . --fix --diff --config ruff.toml
+
+lint-frontend:
+	@echo "🔍 Checking frontend code with ESLint..."
+	npm run lint
+	@echo "✅ Frontend lint check complete"
+
+lint-all: lint-py lint-frontend
+	@echo "✅ All linting complete"
+
+# Memory-safe linting for large codebases
+# Use this if Ruff is consuming too much memory
+lint-py-safe:
+	@echo "🔍 Running Ruff with memory limits..."
+	@cd backend && source .venv/bin/activate && \
+		find . -name "*.py" -not -path "./.venv/*" -not -path "./__pycache__/*" | \
+		head -50 | xargs ruff check --config ruff.toml
+	@echo "✅ Memory-safe lint complete (first 50 files)"
+
+lint-py-incremental:
+	@echo "🔍 Running Ruff on changed files only..."
+	@cd backend && source .venv/bin/activate && \
+		git diff --name-only --diff-filter=ACMR HEAD -- "*.py" | \
+		xargs -r ruff check --config ruff.toml || true
+	@echo "✅ Incremental lint complete"
 
