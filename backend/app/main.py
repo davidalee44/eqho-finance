@@ -19,6 +19,7 @@ from app.api.v1 import (
     stripe_data,
 )
 from app.core.config import settings
+from app.core.env_validator import validate_env, print_validation_report
 from app.services.supabase_service import SupabaseService
 
 # Configure logging
@@ -46,6 +47,15 @@ app = FastAPI(
 async def startup_event():
     """Initialize services on startup"""
     logger.info("🚀 Starting Eqho Due Diligence API...")
+    
+    # Validate environment variables (warn but don't fail for optional vars)
+    env_result = validate_env(raise_on_error=True, verbose=False)
+    if env_result['warnings']:
+        for warning in env_result['warnings']:
+            logger.warning(f"⚠️  {warning}")
+    if env_result['missing_optional']:
+        logger.info(f"Optional env vars not set: {', '.join(env_result['missing_optional'])}")
+    
     logger.info(f"CORS Origins: {settings.CORS_ORIGINS}")
     SupabaseService.connect()
     logger.info("✅ Startup complete")

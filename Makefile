@@ -1,4 +1,4 @@
-.PHONY: help install dev build clean test lint-py lint-py-fix lint-py-unsafe lint-all
+.PHONY: help install dev build clean test lint-py lint-py-fix lint-py-unsafe lint-all validate-env
 
 help:
 	@echo "Eqho Due Diligence - Available Commands:"
@@ -11,6 +11,11 @@ help:
 	@echo "  make test             - Run tests"
 	@echo "  make clean            - Clean build artifacts and cache"
 	@echo "  make setup            - Complete project setup"
+	@echo ""
+	@echo "Environment Validation:"
+	@echo "  make validate-env     - Validate all environment variables"
+	@echo "  make validate-env-fe  - Validate frontend env vars only"
+	@echo "  make validate-env-be  - Validate backend env vars only"
 	@echo ""
 	@echo "Linting Commands:"
 	@echo "  make lint-py          - Check Python code (no changes)"
@@ -155,4 +160,23 @@ lint-py-incremental:
 		git diff --name-only --diff-filter=ACMR HEAD -- "*.py" | \
 		xargs -r ruff check --config ruff.toml || true
 	@echo "✅ Incremental lint complete"
+
+# Environment variable validation
+# Run before builds to catch config issues early
+
+validate-env: validate-env-fe validate-env-be
+	@echo "✅ All environment validation complete"
+
+validate-env-fe:
+	@echo "🔍 Validating frontend environment variables..."
+	@node scripts/validate-env.cjs
+
+validate-env-be:
+	@echo "🔍 Validating backend environment variables..."
+	@cd backend && source .venv/bin/activate && python -m app.core.env_validator
+
+validate-env-ci:
+	@echo "🔍 CI/CD environment validation..."
+	@node scripts/validate-env.cjs --ci
+	@cd backend && source .venv/bin/activate && python -m app.core.env_validator
 

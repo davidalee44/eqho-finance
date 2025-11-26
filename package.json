@@ -6,14 +6,18 @@
   "description": "Eqho interactive investor presentation",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/validate-env.cjs --ci && vite build",
+    "build:skip-check": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "vercel-build": "vite build"
+    "validate-env": "node scripts/validate-env.cjs",
+    "validate-env:ci": "node scripts/validate-env.cjs --ci",
+    "validate-env:all": "node scripts/validate-env.cjs --backend",
+    "vercel-build": "node scripts/validate-env.cjs --ci && vite build"
   },
   "dependencies": {
     "@pipedream/connect-react": "^2.1.1",

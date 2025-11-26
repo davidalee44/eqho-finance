@@ -127,10 +127,17 @@ class StripeService:
         def filter_by_tag(customer):
             if not has_tag:
                 return True
-            # customer is a Stripe object, use dot notation not .get()
-            metadata = customer.metadata or {}
-            tags = metadata.get("tags", "") if isinstance(metadata, dict) else getattr(metadata, "tags", "")
-            return has_tag in tags if tags else False
+            # customer is a raw Stripe object (filter runs before processing)
+            # StripeObject supports both .get() and attribute access
+            try:
+                metadata = customer.metadata
+                if not metadata:
+                    return False
+                # StripeObject has .get() method - use it safely
+                tags = metadata.get("tags") or ""
+                return has_tag.lower() in tags.lower() if tags else False
+            except (AttributeError, TypeError):
+                return False
 
         return await StripeService._paginate_stripe_list(
             list_fn=stripe.Customer.list,
@@ -863,10 +870,11 @@ class StripeService:
 
             try:
                 customer = stripe.Customer.retrieve(customer_id)
-                # Use dot notation for Stripe object (not .get() which is for dicts)
-                metadata = customer.metadata or {}
-                tags = metadata.get("tags", "") if isinstance(metadata, dict) else getattr(metadata, "tags", "")
-                cohort = "towpilot" if tags and "tow" in tags.lower() else "eqho"
+                # StripeObject supports .get() method directly
+                metadata = customer.metadata
+                if metadata:
+                    tags = metadata.get("tags") or ""
+                    cohort = "towpilot" if tags and "tow" in tags.lower() else "eqho"
             except Exception as e:
                 logger.debug(f"Could not retrieve customer {customer_id}: {e}")
 
