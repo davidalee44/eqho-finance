@@ -119,7 +119,7 @@ export const MRRMetrics = ({ showDrillDown = true, investorMode = false }) => {
           setDataTimestamp(dbCached.fetched_at);
           setIsCachedData(true);
           setUsingFallback(false);
-          setError(err instanceof ApiError ? err : new ApiError(err.message, 'unknown', null, API_BASE_URL));
+          setError(null);  // Clear error since we have valid cached data
           setLoading(false);
           return;
         }

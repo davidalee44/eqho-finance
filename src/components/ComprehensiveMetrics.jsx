@@ -54,15 +54,15 @@ export const ComprehensiveMetrics = ({ investorMode = false }) => {
       setRetryCount(0);
     } catch (err) {
       console.error('Error fetching comprehensive metrics:', err);
-      setError(err instanceof ApiError ? err : new ApiError(err.message, 'unknown', null, API_BASE_URL));
       
-      // Try to fetch from database cache
+      // Try to fetch from database cache first before setting error
       try {
         const dbCached = await fetchCachedMetrics('comprehensive_metrics');
         if (dbCached && dbCached.data) {
           setMetrics(dbCached.data);
           setUsingCache(true);
           setDataTimestamp(dbCached.fetched_at);
+          setError(null);  // Clear error since we have valid cached data
           setLoading(false);
           return;
         }
@@ -76,6 +76,10 @@ export const ComprehensiveMetrics = ({ investorMode = false }) => {
         setMetrics(cached);
         setUsingCache(true);
         setDataTimestamp(cached.timestamp);
+        setError(null);  // Clear error since we have valid cached data
+      } else {
+        // Only set error if no cached data is available at all
+        setError(err instanceof ApiError ? err : new ApiError(err.message, 'unknown', null, API_BASE_URL));
       }
     } finally {
       setLoading(false);
