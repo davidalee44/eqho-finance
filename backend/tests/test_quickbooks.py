@@ -4,14 +4,13 @@ Tests for QuickBooks service and endpoints
 Tests OAuth flow, P&L fetching, and caching behavior.
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, patch, MagicMock
-from datetime import datetime
 
 from app.main import app
 from app.services.quickbooks_service import QuickBooksService
-
 
 client = TestClient(app)
 
@@ -30,28 +29,28 @@ class TestQuickBooksService:
         service.client_id = "test_id"
         service.client_secret = "test_secret"
         service.redirect_uri = "http://localhost/callback"
-        
+
         assert service.is_configured is True
 
     def test_api_base_url_sandbox(self):
         """Test sandbox URL is used by default"""
         service = QuickBooksService()
         service.use_sandbox = True
-        
+
         assert "sandbox" in service.api_base_url
 
     def test_api_base_url_production(self):
         """Test production URL when not in sandbox mode"""
         service = QuickBooksService()
         service.use_sandbox = False
-        
+
         assert "sandbox" not in service.api_base_url
 
     def test_parse_pl_report_empty(self):
         """Test P&L parsing handles empty data"""
         service = QuickBooksService()
         result = service._parse_pl_report({})
-        
+
         assert result["total_revenue"] == 0
         assert result["gross_profit"] == 0
         assert result["net_income"] == 0
@@ -65,7 +64,7 @@ class TestQuickBooksEndpoints:
         response = client.get("/api/v1/quickbooks/status")
         assert response.status_code == 200
         data = response.json()
-        
+
         assert "is_configured" in data
         assert "is_connected" in data
         assert "timestamp" in data
@@ -73,17 +72,17 @@ class TestQuickBooksEndpoints:
     def test_quickbooks_auth_url_not_configured(self):
         """Test auth URL endpoint returns error when not configured"""
         response = client.get("/api/v1/quickbooks/auth/url")
-        
+
         # Should return 503 when not configured
         assert response.status_code == 503
 
     def test_quickbooks_profit_loss_not_configured(self):
         """Test P&L endpoint returns cached or error when not configured"""
         response = client.get("/api/v1/quickbooks/profit-loss")
-        
+
         # Should return 503 or cached data
         assert response.status_code in [200, 503]
-        
+
         if response.status_code == 200:
             data = response.json()
             # Should indicate it's cached or have a warning
@@ -92,7 +91,7 @@ class TestQuickBooksEndpoints:
     def test_quickbooks_payroll_not_configured(self):
         """Test payroll endpoint returns error when not configured"""
         response = client.get("/api/v1/quickbooks/payroll")
-        
+
         # Should return 503 or cached data
         assert response.status_code in [200, 503]
 
@@ -105,7 +104,7 @@ class TestQuickBooksEndpoints:
             "total_expenses": 1058976.92,
             "net_income": -704116.07,
         }
-        
+
         response = client.post("/api/v1/quickbooks/manual-pl", json=pl_data)
         assert response.status_code == 200
         data = response.json()
@@ -117,7 +116,7 @@ class TestQuickBooksEndpoints:
             "total_revenue": 635390,
             # Missing other required fields
         }
-        
+
         response = client.post("/api/v1/quickbooks/manual-pl", json=pl_data)
         assert response.status_code == 400
 
@@ -132,9 +131,9 @@ class TestQuickBooksOAuth:
         service.client_id = "test_client_id"
         service.client_secret = "test_secret"
         service.redirect_uri = "http://localhost:8000/callback"
-        
+
         url = service.get_authorization_url(state="test_state")
-        
+
         assert "client_id=test_client_id" in url
         assert "redirect_uri" in url
         assert "state=test_state" in url
@@ -153,21 +152,21 @@ class TestQuickBooksOAuth:
             "expires_in": 3600,
             "token_type": "bearer",
         }
-        
+
         mock_client = MagicMock()
         mock_client.post = AsyncMock(return_value=mock_response)
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock()
         mock_client_class.return_value = mock_client
-        
+
         service = QuickBooksService()
         service.client_id = "test_id"
         service.client_secret = "test_secret"
         service.redirect_uri = "http://localhost/callback"
-        
+
         with patch.object(service, '_store_tokens', AsyncMock()):
             result = await service.exchange_code_for_tokens("test_code")
-        
+
         assert result["access_token"] == "test_access_token"
         assert result["refresh_token"] == "test_refresh_token"
 
@@ -184,14 +183,14 @@ class TestQuickBooksCaching:
             "total_expenses": 50000,
             "net_income": 10000,
         }
-        
+
         # Submit manual P&L
         response = client.post("/api/v1/quickbooks/manual-pl", json=pl_data)
         assert response.status_code == 200
-        
+
         # Check it's in the cache
         cache_response = client.get("/api/v1/stripe/cached/quickbooks_pl")
-        
+
         if cache_response.status_code == 200:
             cache_data = cache_response.json()
             assert cache_data["is_cached"] is True
@@ -207,7 +206,7 @@ class TestQuickBooksIntegration:
         response = client.get("/api/v1/quickbooks/status")
         assert response.status_code == 200
         data = response.json()
-        
+
         if data["is_configured"]:
             # If configured, should have more info
             assert "is_connected" in data
@@ -224,10 +223,10 @@ class TestQuickBooksIntegration:
             "net_income": -704116.07,
         }
         client.post("/api/v1/quickbooks/manual-pl", json=manual_pl)
-        
+
         # Now request P&L - should return cached if QB not configured
         response = client.get("/api/v1/quickbooks/profit-loss")
-        
+
         if response.status_code == 200:
             data = response.json()
             # Should indicate source

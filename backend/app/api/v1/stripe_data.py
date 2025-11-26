@@ -3,8 +3,8 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.services.stripe_service import StripeService
 from app.services.metrics_cache_service import MetricsCacheService
+from app.services.stripe_service import StripeService
 
 router = APIRouter()
 
@@ -41,7 +41,7 @@ async def get_subscriptions():
             "subscriptions": subscriptions,
             "timestamp": datetime.now().isoformat(),
         }
-        
+
         # Calculate MRR from subscriptions (using items array, not plan)
         total_mrr = 0
         for sub in subscriptions:
@@ -49,13 +49,14 @@ async def get_subscriptions():
                 amount = item.get("amount", 0) or 0
                 interval = item.get("interval")
                 interval_count = item.get("interval_count", 1) or 1
-                
+
                 # Normalize to monthly MRR
+                # interval_count handles multi-period billing (e.g., every 3 months, every 2 years)
                 if interval == "month":
                     total_mrr += (amount / 100) / interval_count
                 elif interval == "year":
-                    total_mrr += (amount / 100) / 12
-        
+                    total_mrr += (amount / 100) / 12 / interval_count
+
         # Cache MRR metrics for fallback
         await MetricsCacheService.save_metrics(
             metric_type="mrr_subscriptions",
@@ -66,7 +67,7 @@ async def get_subscriptions():
             },
             source="stripe"
         )
-        
+
         return result
     except Exception as e:
         raise HTTPException(
@@ -167,14 +168,14 @@ async def get_customer_metrics():
     """
     try:
         metrics = await StripeService.calculate_customer_metrics()
-        
+
         # Cache the result for fallback
         await MetricsCacheService.save_metrics(
             metric_type="customer_metrics",
             data=metrics,
             source="stripe"
         )
-        
+
         return metrics
     except Exception as e:
         raise HTTPException(
@@ -306,13 +307,13 @@ async def get_cached_metrics(metric_type: str):
     """
     try:
         cached = await MetricsCacheService.get_latest_metrics(metric_type)
-        
+
         if cached is None:
             raise HTTPException(
                 status_code=404,
                 detail=f"No cached data found for {metric_type}"
             )
-        
+
         return {
             "data": cached["data"],
             "fetched_at": cached["fetched_at"],
@@ -338,7 +339,7 @@ async def get_all_cached_metrics():
     """
     try:
         all_cached = await MetricsCacheService.get_all_latest_metrics()
-        
+
         return {
             "metrics": all_cached,
             "count": len(all_cached),

@@ -2,9 +2,10 @@
 Pytest configuration and fixtures for backend tests
 """
 
-import pytest
 import asyncio
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock
+
+import pytest
 
 
 @pytest.fixture(scope="session")

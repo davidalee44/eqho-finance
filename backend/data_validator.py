@@ -6,10 +6,8 @@ This terminal UI connects to the FastAPI backend to fetch and validate
 financial metrics against stored data files.
 """
 
-import asyncio
 import json
 import os
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
@@ -20,10 +18,9 @@ from rich.console import Console
 from rich.table import Table
 from textual import on, work
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Button, Footer, Header, Label, Static, TabbedContent, TabPane
+from textual.containers import Container, Horizontal
 from textual.reactive import reactive
-
+from textual.widgets import Button, Footer, Header, Label, Static, TabbedContent, TabPane
 
 # Load environment variables
 load_dotenv()
@@ -371,7 +368,7 @@ class DataValidator(App):
                 self.log(f"✗ File not found: {SAAS_KPIS_PATH}", "error")
                 return
 
-            with open(SAAS_KPIS_PATH, "r") as f:
+            with open(SAAS_KPIS_PATH) as f:
                 self.saas_kpis = json.load(f)
 
             # Create a rich table

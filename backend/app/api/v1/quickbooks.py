@@ -12,10 +12,9 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import RedirectResponse
 
-from app.services.quickbooks_service import quickbooks_service
 from app.services.metrics_cache_service import MetricsCacheService
+from app.services.quickbooks_service import quickbooks_service
 
 router = APIRouter()
 
@@ -33,7 +32,7 @@ async def get_auth_url(state: Optional[str] = None):
                 status_code=503,
                 detail="QuickBooks integration not configured. Please set QUICKBOOKS_CLIENT_ID, QUICKBOOKS_CLIENT_SECRET, and QUICKBOOKS_REDIRECT_URI environment variables."
             )
-        
+
         auth_url = quickbooks_service.get_authorization_url(state)
         return {"authorization_url": auth_url}
     except ValueError as e:
@@ -53,10 +52,10 @@ async def auth_callback(code: str, state: Optional[str] = None, realmId: Optiona
         # Store the realm ID if provided
         if realmId:
             quickbooks_service.realm_id = realmId
-            
+
         # Exchange code for tokens
         tokens = await quickbooks_service.exchange_code_for_tokens(code)
-        
+
         return {
             "success": True,
             "message": "QuickBooks connected successfully",
@@ -96,13 +95,13 @@ async def get_profit_loss(
                 status_code=503,
                 detail="QuickBooks integration not configured and no cached data available"
             )
-        
+
         data = await quickbooks_service.get_profit_and_loss(
             start_date=start_date,
             end_date=end_date,
             accounting_method=accounting_method,
         )
-        
+
         return {
             "data": data,
             "timestamp": datetime.now().isoformat(),
@@ -141,7 +140,7 @@ async def get_profit_loss_ytd():
                 status_code=503,
                 detail="QuickBooks integration not configured and no cached data available"
             )
-        
+
         data = await quickbooks_service.get_profit_and_loss_ytd()
         return data
     except HTTPException:
@@ -180,19 +179,19 @@ async def get_payroll_summary(
                 status_code=503,
                 detail="QuickBooks integration not configured and no cached data available"
             )
-        
+
         data = await quickbooks_service.get_payroll_summary(
             start_date=start_date,
             end_date=end_date,
         )
-        
+
         # Cache the result
         await MetricsCacheService.save_metrics(
             metric_type="quickbooks_payroll",
             data=data,
             source="quickbooks"
         )
-        
+
         return data
     except HTTPException:
         raise
@@ -216,11 +215,11 @@ async def get_quickbooks_status():
     """
     try:
         is_configured = quickbooks_service.is_configured
-        
+
         # Check if we have cached tokens
         cached_tokens = await MetricsCacheService.get_latest_metrics("quickbooks_tokens")
         is_connected = cached_tokens is not None
-        
+
         return {
             "is_configured": is_configured,
             "is_connected": is_connected,
@@ -248,18 +247,18 @@ async def store_manual_pl(pl_data: dict):
                     status_code=400,
                     detail=f"Missing required field: {field}"
                 )
-        
+
         # Add metadata
         pl_data['is_manual'] = True
         pl_data['submitted_at'] = datetime.now().isoformat()
-        
+
         # Store in cache
         await MetricsCacheService.save_metrics(
             metric_type="quickbooks_pl",
             data=pl_data,
             source="manual"
         )
-        
+
         return {
             "success": True,
             "message": "P&L data stored successfully",

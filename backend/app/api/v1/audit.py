@@ -2,12 +2,14 @@
 Audit logging endpoints
 Tracks user actions for security and compliance
 """
+from datetime import datetime
+from typing import Any, Dict, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
-from datetime import datetime
-from ...services.supabase_service import SupabaseService
+
 from ...services.auth import get_current_user, require_admin
+from ...services.supabase_service import SupabaseService
 
 router = APIRouter(prefix="/audit", tags=["audit"])
 
@@ -54,7 +56,7 @@ async def create_audit_log(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database connection unavailable"
         )
-    
+
     try:
         insert_data = {
             "user_id": user_id,
@@ -63,17 +65,17 @@ async def create_audit_log(
             "ip_address": log_data.ip_address,
             "user_agent": log_data.user_agent
         }
-        
+
         response = client.table("audit_logs").insert(insert_data).execute()
-        
+
         if not response.data:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create audit log"
             )
-        
+
         return AuditLogResponse(**response.data[0])
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -106,40 +108,40 @@ async def get_audit_logs(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database connection unavailable"
         )
-    
+
     try:
         # Build base query
         query = client.table("audit_logs").select("*", count="exact")
-        
+
         # Apply filters
         if action_type:
             query = query.eq("action_type", action_type)
-        
+
         if user_id_filter:
             query = query.eq("user_id", user_id_filter)
-        
+
         if start_date:
             query = query.gte("created_at", start_date.isoformat())
-        
+
         if end_date:
             query = query.lte("created_at", end_date.isoformat())
-        
+
         # Apply pagination
         offset = (page - 1) * page_size
         query = query.order("created_at", desc=True).range(offset, offset + page_size - 1)
-        
+
         response = query.execute()
-        
+
         logs = [AuditLogResponse(**log) for log in response.data]
         total = response.count if hasattr(response, 'count') else len(logs)
-        
+
         return AuditLogsListResponse(
             logs=logs,
             total=total,
             page=page,
             page_size=page_size
         )
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -161,10 +163,11 @@ async def export_audit_logs(
     Export audit logs as CSV
     Admin only
     """
-    from fastapi.responses import StreamingResponse
-    import io
     import csv
-    
+    import io
+
+    from fastapi.responses import StreamingResponse
+
     client = SupabaseService.client
     if not client:
         SupabaseService.connect()
@@ -174,11 +177,11 @@ async def export_audit_logs(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database connection unavailable"
         )
-    
+
     try:
         # Build query (no pagination for export)
         query = client.table("audit_logs").select("*")
-        
+
         # Apply filters
         if action_type:
             query = query.eq("action_type", action_type)
@@ -188,10 +191,10 @@ async def export_audit_logs(
             query = query.gte("created_at", start_date.isoformat())
         if end_date:
             query = query.lte("created_at", end_date.isoformat())
-        
+
         query = query.order("created_at", desc=True)
         response = query.execute()
-        
+
         # Create CSV in memory
         output = io.StringIO()
         writer = csv.DictWriter(
@@ -199,7 +202,7 @@ async def export_audit_logs(
             fieldnames=["id", "user_id", "action_type", "action_data", "ip_address", "user_agent", "created_at"]
         )
         writer.writeheader()
-        
+
         for log in response.data:
             writer.writerow({
                 "id": log["id"],
@@ -210,7 +213,7 @@ async def export_audit_logs(
                 "user_agent": log.get("user_agent", ""),
                 "created_at": log["created_at"]
             })
-        
+
         # Return CSV file
         output.seek(0)
         return StreamingResponse(
@@ -218,7 +221,7 @@ async def export_audit_logs(
             media_type="text/csv",
             headers={"Content-Disposition": f"attachment; filename=audit_logs_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"}
         )
-    
+
     except HTTPException:
         raise
     except Exception as e:

@@ -37,7 +37,7 @@ class MetricsCalculator:
 
         # Get unique customer count (only paying customers, exclude $0 subscriptions)
         paying_subscriptions = [
-            s for s in all_subscriptions 
+            s for s in all_subscriptions
             if any(item["amount"] > 0 for item in s["items"])
         ]
         towpilot_customer_count = len(set(s["customer"] for s in paying_subscriptions))

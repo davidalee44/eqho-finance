@@ -4,9 +4,10 @@ Tests for MetricsCacheService
 Tests database-backed caching for API metrics.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from app.services.metrics_cache_service import MetricsCacheService
 

@@ -1,11 +1,11 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTimestamp } from '@/components/DataTimestamp';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { API_BASE_URL, ApiError, apiFetch, cacheMetrics, FALLBACK_METRICS, fetchCachedMetrics, getCachedMetrics } from '@/lib/api';
 import { AlertCircle, ChevronDown, ChevronUp, ExternalLink, Loader2, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { apiFetch, ApiError, FALLBACK_METRICS, API_BASE_URL, cacheMetrics, getCachedMetrics, fetchCachedMetrics } from '@/lib/api';
-import { DataTimestamp, CachedDataBanner } from '@/components/DataTimestamp';
 
 /**
  * Component to fetch and display MRR metrics with drill-down capabilities

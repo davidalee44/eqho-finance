@@ -51,7 +51,7 @@ def load_saas_kpis() -> Dict:
     if not SAAS_KPIS_PATH.exists():
         raise FileNotFoundError(f"SAAS KPIs file not found: {SAAS_KPIS_PATH}")
 
-    with open(SAAS_KPIS_PATH, "r") as f:
+    with open(SAAS_KPIS_PATH) as f:
         return json.load(f)
 
 

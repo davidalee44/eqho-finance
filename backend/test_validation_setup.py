@@ -6,7 +6,6 @@ Runs a series of checks to ensure everything is configured correctly.
 """
 
 import asyncio
-import json
 import os
 import sys
 from pathlib import Path

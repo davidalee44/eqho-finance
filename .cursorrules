@@ -229,4 +229,53 @@ npm test                  # Frontend
 
 ---
 
+## Post-Plan Linting
+
+After completing any plan that modifies Python code, run Ruff linting manually:
+
+### Manual Trigger (Cursor)
+After plan completion, prompt me to run:
+```bash
+make lint-py-fix
+```
+
+### Makefile Commands
+
+| Command | Purpose |
+|---------|---------|
+| `make lint-py` | Check only (fast, no changes) |
+| `make lint-py-fix` | Auto-fix safe issues |
+| `make lint-py-unsafe` | Fix all issues (review required) |
+| `make lint-py-format` | Format code with Ruff |
+| `make lint-py-diff` | Show what would change (dry run) |
+| `make lint-all` | Run frontend + backend linting |
+
+### Memory-Safe Options
+
+If Ruff is consuming excessive memory:
+```bash
+# Lint first 50 files only
+make lint-py-safe
+
+# Lint only changed files
+make lint-py-incremental
+```
+
+### Stopping Runaway Ruff
+
+If Ruff is stuck or using too much memory:
+1. Press `Ctrl+C` to interrupt
+2. Use `make lint-py-safe` for incremental linting
+3. Check `backend/ruff.toml` exclude patterns
+
+### Ruff Configuration
+
+Configuration is in `backend/ruff.toml`:
+- Target: Python 3.9+
+- Line length: 120
+- Rules: E, F, I, W, UP, B, SIM
+- Excludes: .venv, migrations, __pycache__
+
+---
+
 Remember: Write code and documentation for the engineer who will maintain this at 2am when something breaks. That engineer might be you.

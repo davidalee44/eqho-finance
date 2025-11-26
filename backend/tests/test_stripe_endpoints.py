@@ -4,14 +4,13 @@ Tests for Stripe API endpoints
 Tests the Stripe data endpoints including caching functionality.
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, patch, MagicMock
-from datetime import datetime
 
 from app.main import app
 from app.services.stripe_service import StripeService
-
 
 client = TestClient(app)
 
@@ -56,7 +55,7 @@ class TestStripeEndpoints:
         mock_cache.save_metrics = AsyncMock(return_value=True)
 
         response = client.get("/api/v1/stripe/comprehensive-metrics")
-        
+
         # Endpoint should work (may use real data if not mocked properly)
         assert response.status_code in [200, 500]
 
@@ -108,10 +107,10 @@ class TestStripeCaching:
     def test_metrics_are_cached(self, mock_cache):
         """Test that metrics are cached after fetching"""
         mock_cache.save_metrics = AsyncMock(return_value=True)
-        
+
         # Call the endpoint
         response = client.get("/api/v1/stripe/churn-and-arpu")
-        
+
         if response.status_code == 200:
             # Verify cache was called (may not be called if using real service)
             # This test documents expected behavior
@@ -123,7 +122,7 @@ class TestStripeCaching:
         assert response.status_code == 200
         data = response.json()
         assert "timestamp" in data
-        
+
         # If there are cached metrics, each should have fetched_at
         for metric_type, metric_data in data.get("metrics", {}).items():
             assert "fetched_at" in metric_data
@@ -144,18 +143,18 @@ class TestStripePagination:
             MagicMock(id="cus_2", email="b@test.com", created=1700000001, metadata={}),
         ]
         page1_response.has_more = True
-        
+
         page2_response = MagicMock()
         page2_response.data = [
             MagicMock(id="cus_3", email="c@test.com", created=1700000002, metadata={}),
         ]
         page2_response.has_more = False
-        
+
         mock_list.side_effect = [page1_response, page2_response]
-        
+
         # Test
         customers = await StripeService.get_all_customers()
-        
+
         # Assert
         assert len(customers) == 3
         assert mock_list.call_count == 2
@@ -169,12 +168,12 @@ class TestStripePagination:
             MagicMock(id="cus_1", email="a@test.com", created=1700000000, metadata={}),
         ]
         response.has_more = False
-        
+
         mock_list.return_value = response
-        
+
         # Test
         customers = await StripeService.get_all_customers()
-        
+
         # Assert
         assert len(customers) == 1
         assert mock_list.call_count == 1
@@ -186,12 +185,12 @@ class TestStripePagination:
         response = MagicMock()
         response.data = []
         response.has_more = False
-        
+
         mock_list.return_value = response
-        
+
         # Test
         customers = await StripeService.get_all_customers()
-        
+
         # Assert
         assert len(customers) == 0
         assert mock_list.call_count == 1
@@ -220,12 +219,12 @@ class TestStripePagination:
             ),
         ]
         response.has_more = False
-        
+
         mock_list.return_value = response
-        
+
         # Test with filter
         subscriptions = await StripeService.get_active_subscriptions(customer_ids=["cus_1"])
-        
+
         # Should only return cus_1's subscription
         assert len(subscriptions) == 1
         assert subscriptions[0]["customer"] == "cus_1"
@@ -238,13 +237,13 @@ class TestStripeIntegration:
     def test_live_comprehensive_metrics(self):
         """Test comprehensive metrics with live data"""
         response = client.get("/api/v1/stripe/comprehensive-metrics")
-        
+
         if response.status_code == 500:
             pytest.skip("Stripe not configured or unavailable")
-        
+
         assert response.status_code == 200
         data = response.json()
-        
+
         # Verify structure
         assert "customer_metrics" in data
         assert "retention_by_segment" in data
@@ -256,17 +255,17 @@ class TestStripeIntegration:
     def test_live_churn_and_arpu(self):
         """Test churn and ARPU with live data"""
         response = client.get("/api/v1/stripe/churn-and-arpu?months=3")
-        
+
         if response.status_code == 500:
             pytest.skip("Stripe not configured or unavailable")
-        
+
         assert response.status_code == 200
         data = response.json()
-        
+
         # Verify churn data
         assert data["churn"]["customer_churn_rate"] >= 0
         assert data["churn"]["period_months"] == 3
-        
+
         # Verify ARPU data
         assert data["arpu"]["arpu_monthly"] > 0
         assert data["arpu"]["total_customers"] > 0
@@ -276,13 +275,13 @@ class TestStripeIntegration:
         """Test that API calls create cache entries in database"""
         # First, call an endpoint that should cache
         response = client.get("/api/v1/stripe/comprehensive-metrics")
-        
+
         if response.status_code != 200:
             pytest.skip("Stripe not configured or unavailable")
-        
+
         # Then check if it's in the cache
         cache_response = client.get("/api/v1/stripe/cached/comprehensive_metrics")
-        
+
         assert cache_response.status_code == 200
         cache_data = cache_response.json()
         assert cache_data["is_cached"] is True

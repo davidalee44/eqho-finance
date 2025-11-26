@@ -6,9 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1 import (
     audit,
     cache,
+    cashflow,
     customer_mrr,
     emails,
     flags,
+    integrations,
     layouts,
     metrics,
     quickbooks,
@@ -74,6 +76,8 @@ app.include_router(emails.router, prefix="/api/v1/emails", tags=["emails"])
 app.include_router(layouts.router, prefix="/api/v1", tags=["layouts"])
 app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
 app.include_router(flags.router, prefix="/api/v1/flags", tags=["flags"])
+app.include_router(cashflow.router, prefix="/api/v1/cashflow", tags=["cashflow"])
+app.include_router(integrations.router, prefix="/api/v1/integrations", tags=["integrations"])
 
 
 @app.get("/")

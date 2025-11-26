@@ -3,9 +3,34 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import App from '../App'
 import { AuditLogViewer } from './AuditLogViewer'
+import { CashFlowDashboard } from './CashFlowDashboard'
+import IntegrationsPage from './IntegrationsPage'
 import { useAuth } from '../contexts/AuthContext'
 
 // SECURITY: DEV_BYPASS removed - was a security risk if DEV flag incorrectly set in production
+
+/**
+ * Protected route component for admin-only routes.
+ * Must be defined OUTSIDE AppRouter to prevent remounting on re-renders.
+ */
+function AdminRoute({ children }) {
+  const { isAdmin, loading } = useAuth()
+  
+  // Wait for auth to complete before making decisions
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-white text-xl">Checking permissions...</div>
+      </div>
+    )
+  }
+  
+  if (!isAdmin) {
+    return <Navigate to="/" replace />
+  }
+  
+  return children
+}
 
 function UnauthorizedAccess() {
   return (
@@ -38,12 +63,27 @@ export function AppRouter() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    let isMounted = true
+    
+    // Timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn('[AppRouter] Auth timeout - forcing load complete')
+        setLoading(false)
+      }
+    }, 10000) // 10 second timeout
+
     async function getUserProfile() {
       try {
+        console.log('[AppRouter] Fetching user...')
         // Get current user
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         
+        if (!isMounted) return
+        
         if (userError) throw userError
+        
+        console.log('[AppRouter] User:', user?.email || 'not logged in')
         
         if (user) {
           // Try to fetch user profile from database (graceful fallback if table doesn't exist)
@@ -52,6 +92,8 @@ export function AppRouter() {
             .select('role, app_access, company, full_name')
             .eq('id', user.id)
             .single()
+          
+          if (!isMounted) return
           
           if (profileError) {
             // Profile table doesn't exist or user not found - use metadata from auth
@@ -67,6 +109,7 @@ export function AppRouter() {
               full_name: user.user_metadata?.full_name || user.email?.split('@')[0]
             })
           } else {
+            console.log('[AppRouter] Profile loaded:', profile?.role)
             setUserProfile({
               ...profile,
               email: user.email,
@@ -90,15 +133,25 @@ export function AppRouter() {
           }
         }
         
-        setLoading(false)
+        if (isMounted) {
+          console.log('[AppRouter] Setting loading to false')
+          setLoading(false)
+        }
       } catch (err) {
         console.error('Error loading user profile:', err)
-        setError(err.message)
-        setLoading(false)
+        if (isMounted) {
+          setError(err.message)
+          setLoading(false)
+        }
       }
     }
 
     getUserProfile()
+    
+    return () => {
+      isMounted = false
+      clearTimeout(timeoutId)
+    }
   }, [])
 
   if (loading) {
@@ -142,15 +195,6 @@ export function AppRouter() {
     return <UnauthorizedAccess />
   }
 
-  // Protected route component for admin-only routes
-  function AdminRoute({ children }) {
-    const { isAdmin } = useAuth()
-    if (!isAdmin) {
-      return <Navigate to="/" replace />
-    }
-    return children
-  }
-
   // Show routes
   return (
     <Routes>
@@ -160,6 +204,22 @@ export function AppRouter() {
         element={
           <AdminRoute>
             <AuditLogViewer />
+          </AdminRoute>
+        } 
+      />
+      <Route 
+        path="/admin/cashflow" 
+        element={
+          <AdminRoute>
+            <CashFlowDashboard />
+          </AdminRoute>
+        } 
+      />
+      <Route 
+        path="/admin/integrations" 
+        element={
+          <AdminRoute>
+            <IntegrationsPage />
           </AdminRoute>
         } 
       />

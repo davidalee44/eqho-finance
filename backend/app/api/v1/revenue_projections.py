@@ -7,7 +7,6 @@ Critical for cash flow planning and accurate revenue forecasting.
 
 from calendar import monthrange
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -58,12 +57,13 @@ async def get_current_month_projections():
             interval_count = item.get("interval_count", 1)
 
             # Calculate monthly MRR
+            # interval_count handles multi-period billing (e.g., every 3 months, every 2 years)
             if interval == "year":
-                monthly = amount / 12
+                monthly = amount / 12 / interval_count
             elif interval == "month":
                 monthly = amount / interval_count
             elif interval == "week":
-                monthly = (amount * 52) / 12
+                monthly = (amount * 52) / 12 / interval_count
             else:
                 monthly = 0
 
@@ -196,12 +196,13 @@ async def get_month_detail(
             interval_count = item.get("interval_count", 1)
 
             # Calculate MRR
+            # interval_count handles multi-period billing (e.g., every 3 months, every 2 years)
             if interval == "year":
-                monthly = amount / 12
+                monthly = amount / 12 / interval_count
             elif interval == "month":
                 monthly = amount / interval_count
             elif interval == "week":
-                monthly = (amount * 52) / 12
+                monthly = (amount * 52) / 12 / interval_count
             else:
                 monthly = 0
 
@@ -306,12 +307,13 @@ async def get_quarterly_revenue_forecast(
                         interval = item["interval"]
                         interval_count = item.get("interval_count", 1)
 
+                        # interval_count handles multi-period billing
                         if interval == "year":
-                            monthly = amount / 12
+                            monthly = amount / 12 / interval_count
                         elif interval == "month":
                             monthly = amount / interval_count
                         elif interval == "week":
-                            monthly = (amount * 52) / 12
+                            monthly = (amount * 52) / 12 / interval_count
                         else:
                             monthly = 0
 
@@ -393,12 +395,13 @@ async def get_annual_revenue_forecast():
                     interval = item["interval"]
                     interval_count = item.get("interval_count", 1)
 
+                    # interval_count handles multi-period billing
                     if interval == "year":
-                        monthly = amount / 12
+                        monthly = amount / 12 / interval_count
                     elif interval == "month":
                         monthly = amount / interval_count
                     elif interval == "week":
-                        monthly = (amount * 52) / 12
+                        monthly = (amount * 52) / 12 / interval_count
                     else:
                         monthly = 0
 

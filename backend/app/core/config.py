@@ -32,11 +32,20 @@ class Settings(BaseSettings):
     # Resend Email API
     RESEND_API_KEY: str = ""
 
-    # Pipedream Configuration
-    PIPEDREAM_CONNECT_TOKEN: str = ""
+    # Pipedream Connect Configuration
     PIPEDREAM_PROJECT_ID: str = ""
+    PIPEDREAM_CLIENT_ID: str = ""
+    PIPEDREAM_CLIENT_SECRET: str = ""
     PIPEDREAM_ENVIRONMENT: str = "production"
+    PIPEDREAM_WORKSPACE_ID: str = ""
     PIPEDREAM_WEBHOOK_SECRET: str = ""
+
+    # QuickBooks Configuration
+    QUICKBOOKS_CLIENT_ID: str = ""
+    QUICKBOOKS_CLIENT_SECRET: str = ""
+    QUICKBOOKS_REDIRECT_URI: str = "http://localhost:8000/api/v1/quickbooks/auth/callback"
+    QUICKBOOKS_REALM_ID: str = ""  # Your company ID from QuickBooks
+    QUICKBOOKS_USE_SANDBOX: bool = False  # Set to True for sandbox/development
 
     class Config:
         env_file = ".env"

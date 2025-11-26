@@ -88,8 +88,7 @@ class StripeService:
                 # Page wasn't full - API says there's more but page isn't full
                 # This shouldn't happen normally, but trust the has_more flag
                 logger.warning(
-                    f"Pagination warning: has_more=True but page not full "
-                    f"(got {page_count}, expected {page_size})"
+                    f"Pagination warning: has_more=True but page not full (got {page_count}, expected {page_size})"
                 )
 
             if not response.data:
@@ -105,9 +104,7 @@ class StripeService:
                 f"Total fetched: {total_fetched}. Data may be incomplete."
             )
 
-        logger.info(
-            f"Pagination complete: {len(results)} results in {iteration} iterations"
-        )
+        logger.info(f"Pagination complete: {len(results)} results in {iteration} iterations")
         return results
 
     @staticmethod
@@ -130,8 +127,10 @@ class StripeService:
         def filter_by_tag(customer):
             if not has_tag:
                 return True
-            tags = customer.get("metadata", {}).get("tags", "")
-            return has_tag in tags
+            # customer is a Stripe object, use dot notation not .get()
+            metadata = customer.metadata or {}
+            tags = metadata.get("tags", "") if isinstance(metadata, dict) else getattr(metadata, "tags", "")
+            return has_tag in tags if tags else False
 
         return await StripeService._paginate_stripe_list(
             list_fn=stripe.Customer.list,
@@ -159,16 +158,10 @@ class StripeService:
                         "price": item.price.id,
                         "amount": item.price.unit_amount,
                         "currency": item.price.currency,
-                        "interval": item.price.recurring.interval
-                        if item.price.recurring
-                        else None,
-                        "interval_count": item.price.recurring.interval_count
-                        if item.price.recurring
-                        else 1,
+                        "interval": item.price.recurring.interval if item.price.recurring else None,
+                        "interval_count": item.price.recurring.interval_count if item.price.recurring else 1,
                     }
-                    for item in sub[
-                        "items"
-                    ].data  # Stripe objects support dict-style access
+                    for item in sub["items"].data  # Stripe objects support dict-style access
                 ],
             }
 
@@ -201,19 +194,20 @@ class StripeService:
                     continue
 
                 interval = item["interval"]
-                interval_count = item.get("interval_count", 1)
+                interval_count = item.get("interval_count", 1) or 1
 
                 # Normalize to monthly MRR
+                # interval_count handles multi-period billing (e.g., every 3 months, every 2 years)
                 if interval == "year":
-                    mrr += amount / 12
+                    mrr += amount / 12 / interval_count
                 elif interval == "month":
                     # Handle quarterly (interval_count=3), semi-annual (6), etc.
                     mrr += amount / interval_count
                 elif interval == "day":
-                    mrr += amount * 30
+                    mrr += (amount * 30) / interval_count
                 elif interval == "week":
                     # Weekly subscriptions: (amount * 52 weeks) / 12 months
-                    mrr += (amount * 52) / 12
+                    mrr += (amount * 52) / 12 / interval_count
 
         return round(mrr, 2)
 
@@ -230,14 +224,16 @@ class StripeService:
             for item in sub["items"]:
                 amount = item["amount"] / 100
                 interval = item["interval"]
+                interval_count = item.get("interval_count", 1) or 1
 
                 # Normalize to annual
+                # interval_count handles multi-period billing (e.g., every 3 months, every 2 years)
                 if interval == "year":
-                    annual_value += amount
+                    annual_value += amount / interval_count
                 elif interval == "month":
-                    annual_value += amount * 12
+                    annual_value += (amount * 12) / interval_count
                 elif interval == "day":
-                    annual_value += amount * 365
+                    annual_value += (amount * 365) / interval_count
 
             total_annual_value += annual_value
 
@@ -321,13 +317,9 @@ class StripeService:
                         "price": item.price.id,
                         "amount": item.price.unit_amount,
                         "currency": item.price.currency,
-                        "interval": item.price.recurring.interval
-                        if item.price.recurring
-                        else None,
+                        "interval": item.price.recurring.interval if item.price.recurring else None,
                     }
-                    for item in sub[
-                        "items"
-                    ].data  # Stripe objects support dict-style access
+                    for item in sub["items"].data  # Stripe objects support dict-style access
                 ],
             }
 
@@ -389,17 +381,12 @@ class StripeService:
             s
             for s in all_subscriptions
             if s["created"] < start_timestamp
-            and (
-                s["status"] == "active"
-                or (s["canceled_at"] and s["canceled_at"] >= start_timestamp)
-            )
+            and (s["status"] == "active" or (s["canceled_at"] and s["canceled_at"] >= start_timestamp))
         ]
 
         # Subscriptions that churned during the period
         churned_subscriptions = [
-            s
-            for s in all_subscriptions
-            if s["canceled_at"] and start_timestamp <= s["canceled_at"] < end_timestamp
+            s for s in all_subscriptions if s["canceled_at"] and start_timestamp <= s["canceled_at"] < end_timestamp
         ]
 
         # Calculate MRR lost from churned subscriptions
@@ -411,14 +398,10 @@ class StripeService:
 
         # Customer churn rate
         unique_customers_at_start = len(set(s["customer"] for s in active_at_start))
-        unique_churned_customers = len(
-            set(s["customer"] for s in churned_subscriptions)
-        )
+        unique_churned_customers = len(set(s["customer"] for s in churned_subscriptions))
 
         customer_churn_rate = (
-            (unique_churned_customers / unique_customers_at_start * 100)
-            if unique_customers_at_start > 0
-            else 0.0
+            (unique_churned_customers / unique_customers_at_start * 100) if unique_customers_at_start > 0 else 0.0
         )
 
         # Revenue churn rate
@@ -499,21 +482,11 @@ class StripeService:
         year_start_timestamp = int(year_start.timestamp())
 
         # Customers created this year
-        new_customers_ytd = len(
-            set(
-                s["customer"]
-                for s in all_subscriptions
-                if s["created"] >= year_start_timestamp
-            )
-        )
+        new_customers_ytd = len(set(s["customer"] for s in all_subscriptions if s["created"] >= year_start_timestamp))
 
         # Customers at start of year (approximate - those created before year start)
         customers_at_year_start = len(
-            set(
-                s["customer"]
-                for s in all_subscriptions
-                if s["created"] < year_start_timestamp
-            )
+            set(s["customer"] for s in all_subscriptions if s["created"] < year_start_timestamp)
         )
 
         # Net adds = new customers - churned customers this year
@@ -528,11 +501,7 @@ class StripeService:
 
         # Growth rate calculation
         growth_rate = (
-            (
-                (active_customers - customers_at_year_start)
-                / customers_at_year_start
-                * 100
-            )
+            ((active_customers - customers_at_year_start) / customers_at_year_start * 100)
             if customers_at_year_start > 0
             else 0.0
         )
@@ -567,9 +536,7 @@ class StripeService:
                 try:
                     customer = stripe.Customer.retrieve(customer_id)
                     tags = customer.get("metadata", {}).get("tags", "")
-                    customer_cache[customer_id] = (
-                        "tow" in tags.lower() if tags else False
-                    )
+                    customer_cache[customer_id] = "tow" in tags.lower() if tags else False
                 except Exception as e:
                     logger.warning(f"Failed to retrieve customer {customer_id}: {e}")
                     customer_cache[customer_id] = False
@@ -595,9 +562,7 @@ class StripeService:
         towpilot_active = len([s for s in towpilot_subs if s["status"] == "active"])
         towpilot_churned = len([s for s in towpilot_subs if s.get("canceled_at")])
         towpilot_total = towpilot_active + towpilot_churned
-        towpilot_retention = (
-            (towpilot_active / towpilot_total * 100) if towpilot_total > 0 else 0.0
-        )
+        towpilot_retention = (towpilot_active / towpilot_total * 100) if towpilot_total > 0 else 0.0
 
         # Calculate retention for Other Products
         other_subs = [s for s in all_subscriptions if not s["is_towpilot"]]
@@ -610,9 +575,7 @@ class StripeService:
         overall_active = len([s for s in all_subscriptions if s["status"] == "active"])
         overall_churned = len([s for s in all_subscriptions if s.get("canceled_at")])
         overall_total = overall_active + overall_churned
-        overall_retention = (
-            (overall_active / overall_total * 100) if overall_total > 0 else 0.0
-        )
+        overall_retention = (overall_active / overall_total * 100) if overall_total > 0 else 0.0
 
         return {
             "towpilot": {
@@ -647,9 +610,7 @@ class StripeService:
         # Get TowPilot subscriptions
         towpilot_customers = await StripeService.get_all_customers(has_tag="tow")
         towpilot_customer_ids = [c["id"] for c in towpilot_customers]
-        towpilot_subscriptions = await StripeService.get_active_subscriptions(
-            customer_ids=towpilot_customer_ids
-        )
+        towpilot_subscriptions = await StripeService.get_active_subscriptions(customer_ids=towpilot_customer_ids)
 
         # Group by pricing tier (based on MRR amount)
         # This is a simplified approach - in production, you'd use price IDs or metadata
@@ -731,10 +692,7 @@ class StripeService:
             s
             for s in all_subscriptions
             if s["created"] < start_timestamp
-            and (
-                s["status"] == "active"
-                or (s.get("canceled_at") and s["canceled_at"] >= start_timestamp)
-            )
+            and (s["status"] == "active" or (s.get("canceled_at") and s["canceled_at"] >= start_timestamp))
         ]
 
         # Calculate MRR at start
@@ -745,15 +703,9 @@ class StripeService:
         current_mrr = await StripeService.calculate_mrr(still_active)
 
         # Gross retention = (start_mrr - churned_mrr) / start_mrr
-        churned_subs = [
-            s
-            for s in active_at_start
-            if s.get("canceled_at") and s["canceled_at"] >= start_timestamp
-        ]
+        churned_subs = [s for s in active_at_start if s.get("canceled_at") and s["canceled_at"] >= start_timestamp]
         churned_mrr = await StripeService.calculate_mrr(churned_subs)
-        gross_retention = (
-            ((start_mrr - churned_mrr) / start_mrr * 100) if start_mrr > 0 else 0.0
-        )
+        gross_retention = ((start_mrr - churned_mrr) / start_mrr * 100) if start_mrr > 0 else 0.0
 
         # Net retention = current_mrr / start_mrr (includes expansion)
         net_retention = (current_mrr / start_mrr * 100) if start_mrr > 0 else 0.0
@@ -800,9 +752,7 @@ class StripeService:
         ltv_cac_ratio = (ltv / cac_total) if cac_total > 0 else 0.0
 
         # CAC payback period (months to recover CAC)
-        cac_payback = (
-            (cac_total / monthly_gross_profit) if monthly_gross_profit > 0 else 0.0
-        )
+        cac_payback = (cac_total / monthly_gross_profit) if monthly_gross_profit > 0 else 0.0
 
         return {
             "cac": {
@@ -821,3 +771,328 @@ class StripeService:
             "arpu_monthly": arpu_data["arpu_monthly"],
             "timestamp": datetime.now().isoformat(),
         }
+
+    @staticmethod
+    async def get_stripe_balance() -> Dict:
+        """
+        Fetch Stripe account balance (available + pending).
+
+        Returns:
+            Dict with available, pending, and total balances per currency
+        """
+        try:
+            balance = stripe.Balance.retrieve()
+
+            # Process available balance
+            available = []
+            total_available_usd = 0
+            for bal in balance.available:
+                amount = bal.amount / 100  # Convert cents to dollars
+                available.append(
+                    {
+                        "amount": amount,
+                        "currency": bal.currency.upper(),
+                    }
+                )
+                if bal.currency == "usd":
+                    total_available_usd = amount
+
+            # Process pending balance
+            pending = []
+            total_pending_usd = 0
+            for bal in balance.pending:
+                amount = bal.amount / 100
+                pending.append(
+                    {
+                        "amount": amount,
+                        "currency": bal.currency.upper(),
+                    }
+                )
+                if bal.currency == "usd":
+                    total_pending_usd = amount
+
+            # Process instant available if present
+            instant_available = []
+            if hasattr(balance, "instant_available") and balance.instant_available:
+                for bal in balance.instant_available:
+                    instant_available.append(
+                        {
+                            "amount": bal.amount / 100,
+                            "currency": bal.currency.upper(),
+                        }
+                    )
+
+            return {
+                "available": available,
+                "pending": pending,
+                "instant_available": instant_available,
+                "total_available_usd": round(total_available_usd, 2),
+                "total_pending_usd": round(total_pending_usd, 2),
+                "total_balance_usd": round(total_available_usd + total_pending_usd, 2),
+                "timestamp": datetime.now().isoformat(),
+            }
+        except Exception as e:
+            logger.error(f"Error fetching Stripe balance: {e}")
+            raise
+
+    @staticmethod
+    async def get_upcoming_billings(days: int = 30) -> Dict:
+        """
+        Get upcoming subscription billings for the next N days.
+
+        Calculates expected billings based on active subscription renewal dates.
+
+        Args:
+            days: Number of days to look ahead (default 30)
+
+        Returns:
+            Dict with billings grouped by time period and cohort
+        """
+        now = datetime.now()
+        today_start = datetime(now.year, now.month, now.day)
+        tomorrow_start = today_start + timedelta(days=1)
+        week_end = today_start + timedelta(days=7)
+        month_end = today_start + timedelta(days=days)
+
+        # Get all active subscriptions with billing info
+        def process_subscription(sub):
+            # Get customer metadata for cohort identification
+            customer_id = sub.customer
+            customer = None  # Initialize before try block to avoid NameError
+            cohort = "unknown"
+
+            try:
+                customer = stripe.Customer.retrieve(customer_id)
+                # Use dot notation for Stripe object (not .get() which is for dicts)
+                metadata = customer.metadata or {}
+                tags = metadata.get("tags", "") if isinstance(metadata, dict) else getattr(metadata, "tags", "")
+                cohort = "towpilot" if tags and "tow" in tags.lower() else "eqho"
+            except Exception as e:
+                logger.debug(f"Could not retrieve customer {customer_id}: {e}")
+
+            # Calculate monthly amount
+            monthly_amount = 0
+            for item in sub["items"].data:
+                amount = (item.price.unit_amount or 0) / 100
+                interval = item.price.recurring.interval if item.price.recurring else None
+                interval_count = item.price.recurring.interval_count if item.price.recurring else 1
+
+                if interval == "month":
+                    monthly_amount += amount / interval_count
+                elif interval == "year":
+                    monthly_amount += amount / 12 / interval_count
+                elif interval == "week":
+                    monthly_amount += (amount * 52) / 12 / interval_count
+
+            return {
+                "id": sub.id,
+                "customer_id": customer_id,
+                "customer_email": customer.email if customer else None,
+                "customer_name": customer.name if customer else None,
+                "cohort": cohort,
+                "amount": round(monthly_amount, 2),
+                "currency": "usd",
+                "current_period_end": sub.current_period_end,
+                "billing_date": datetime.fromtimestamp(sub.current_period_end),
+            }
+
+        # Fetch active subscriptions
+        subscriptions = await StripeService._paginate_stripe_list(
+            list_fn=stripe.Subscription.list,
+            params={"status": "active"},
+            item_processor=process_subscription,
+        )
+
+        # Group by time period
+        today_billings = []
+        tomorrow_billings = []
+        week_billings = []
+        month_billings = []
+
+        today_total = 0
+        tomorrow_total = 0
+        week_total = 0
+        month_total = 0
+
+        # Cohort totals
+        cohort_totals = {
+            "towpilot": {"today": 0, "tomorrow": 0, "week": 0, "month": 0},
+            "eqho": {"today": 0, "tomorrow": 0, "week": 0, "month": 0},
+            "unknown": {"today": 0, "tomorrow": 0, "week": 0, "month": 0},
+        }
+
+        for sub in subscriptions:
+            billing_date = sub["billing_date"]
+            amount = sub["amount"]
+            cohort = sub["cohort"]
+
+            billing_info = {
+                "subscription_id": sub["id"],
+                "customer_id": sub["customer_id"],
+                "customer_email": sub["customer_email"],
+                "customer_name": sub["customer_name"],
+                "cohort": cohort,
+                "amount": amount,
+                "billing_date": billing_date.isoformat(),
+            }
+
+            # Categorize by time period (MUTUALLY EXCLUSIVE - each billing counted only once)
+            # "this_week" and "this_month" are CUMULATIVE totals (include earlier periods)
+            if today_start <= billing_date < tomorrow_start:
+                # Today only
+                today_billings.append(billing_info)
+                today_total += amount
+                cohort_totals[cohort]["today"] += amount
+            elif tomorrow_start <= billing_date < tomorrow_start + timedelta(days=1):
+                # Tomorrow only
+                tomorrow_billings.append(billing_info)
+                tomorrow_total += amount
+                cohort_totals[cohort]["tomorrow"] += amount
+            elif tomorrow_start + timedelta(days=1) <= billing_date < week_end:
+                # Rest of week (days 2-6)
+                week_billings.append(billing_info)
+            elif week_end <= billing_date < month_end:
+                # Rest of month (after week)
+                month_billings.append(billing_info)
+
+            # Calculate cumulative totals for week and month
+            # "This week" = today + tomorrow + rest of week
+            if today_start <= billing_date < week_end:
+                week_total += amount
+                cohort_totals[cohort]["week"] += amount
+
+            # "This month" = entire month (includes week)
+            if today_start <= billing_date < month_end:
+                month_total += amount
+                cohort_totals[cohort]["month"] += amount
+
+        # Build cumulative details lists for week and month
+        week_all_billings = today_billings + tomorrow_billings + week_billings
+        month_all_billings = week_all_billings + month_billings
+
+        return {
+            # Today: just today's billings (exclusive)
+            "today": {
+                "amount": round(today_total, 2),
+                "count": len(today_billings),
+                "details": today_billings,
+            },
+            # Tomorrow: just tomorrow's billings (exclusive)
+            "tomorrow": {
+                "amount": round(tomorrow_total, 2),
+                "count": len(tomorrow_billings),
+                "details": tomorrow_billings,
+            },
+            # This week: CUMULATIVE total (today + tomorrow + rest of week)
+            "this_week": {
+                "amount": round(week_total, 2),
+                "count": len(week_all_billings),
+                "details": week_all_billings[:20],  # Limit for UI
+            },
+            # This month: CUMULATIVE total (entire month including week)
+            "this_month": {
+                "amount": round(month_total, 2),
+                "count": len(month_all_billings),
+                "details": month_all_billings[:20],  # Limit for UI
+            },
+            # Cohort breakdown (week/month are cumulative)
+            "by_cohort": {
+                "towpilot": {
+                    "today": round(cohort_totals["towpilot"]["today"], 2),
+                    "tomorrow": round(cohort_totals["towpilot"]["tomorrow"], 2),
+                    "week": round(cohort_totals["towpilot"]["week"], 2),
+                    "month": round(cohort_totals["towpilot"]["month"], 2),
+                },
+                "eqho": {
+                    "today": round(cohort_totals["eqho"]["today"], 2),
+                    "tomorrow": round(cohort_totals["eqho"]["tomorrow"], 2),
+                    "week": round(cohort_totals["eqho"]["week"], 2),
+                    "month": round(cohort_totals["eqho"]["month"], 2),
+                },
+            },
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    @staticmethod
+    async def get_recent_payouts(limit: int = 10) -> List[Dict]:
+        """
+        Get recent Stripe payouts (transfers to bank account).
+
+        Args:
+            limit: Number of recent payouts to fetch
+
+        Returns:
+            List of recent payout details
+        """
+        try:
+            payouts = stripe.Payout.list(limit=limit)
+
+            result = []
+            for payout in payouts.data:
+                result.append(
+                    {
+                        "id": payout.id,
+                        "amount": payout.amount / 100,
+                        "currency": payout.currency.upper(),
+                        "status": payout.status,
+                        "arrival_date": datetime.fromtimestamp(payout.arrival_date).isoformat()
+                        if payout.arrival_date
+                        else None,
+                        "created": datetime.fromtimestamp(payout.created).isoformat(),
+                        "method": payout.method,
+                        "type": payout.type,
+                    }
+                )
+
+            return result
+        except Exception as e:
+            logger.error(f"Error fetching payouts: {e}")
+            return []
+
+    @staticmethod
+    async def get_pending_charges() -> Dict:
+        """
+        Get charges that are pending (not yet captured or failed).
+
+        Returns:
+            Dict with pending charge details
+        """
+        try:
+            # Get recent charges that haven't been captured
+            charges = stripe.Charge.list(
+                limit=100,
+                created={"gte": int((datetime.now() - timedelta(days=7)).timestamp())},
+            )
+
+            pending = []
+            pending_total = 0
+
+            for charge in charges.data:
+                if charge.status == "pending":
+                    amount = charge.amount / 100
+                    pending.append(
+                        {
+                            "id": charge.id,
+                            "amount": amount,
+                            "currency": charge.currency.upper(),
+                            "customer": charge.customer,
+                            "created": datetime.fromtimestamp(charge.created).isoformat(),
+                        }
+                    )
+                    pending_total += amount
+
+            return {
+                "charges": pending,
+                "total": round(pending_total, 2),
+                "count": len(pending),
+                "timestamp": datetime.now().isoformat(),
+            }
+        except Exception as e:
+            logger.error(f"Error fetching pending charges: {e}")
+            return {
+                "charges": [],
+                "total": 0,
+                "count": 0,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat(),
+            }

@@ -34,7 +34,7 @@ class MetricsCacheService:
             if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
                 logger.warning("Supabase credentials not configured for metrics cache")
                 return None
-            
+
             try:
                 from supabase import create_client
                 cls.client = create_client(
@@ -45,7 +45,7 @@ class MetricsCacheService:
             except Exception as e:
                 logger.error(f"❌ Failed to connect to Supabase: {e}")
                 return None
-        
+
         return cls.client
 
     @classmethod
@@ -153,14 +153,14 @@ class MetricsCacheService:
             # Supabase default limit is 1000, but we paginate to be safe
             PAGE_SIZE = 1000
             MAX_ITERATIONS = 10
-            
+
             all_entries = []
             offset = 0
             iteration = 0
-            
+
             while iteration < MAX_ITERATIONS:
                 iteration += 1
-                
+
                 response = (
                     client.table("metrics_cache")
                     .select("metric_type, data, fetched_at, source")
@@ -168,16 +168,16 @@ class MetricsCacheService:
                     .range(offset, offset + PAGE_SIZE - 1)
                     .execute()
                 )
-                
+
                 if not response.data:
                     break
-                    
+
                 all_entries.extend(response.data)
-                
+
                 # If we got less than PAGE_SIZE, we've reached the end
                 if len(response.data) < PAGE_SIZE:
                     break
-                    
+
                 offset += PAGE_SIZE
                 logger.debug(f"Metrics cache pagination: iteration={iteration}, total={len(all_entries)}")
 

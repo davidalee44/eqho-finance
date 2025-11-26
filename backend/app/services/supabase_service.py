@@ -43,7 +43,7 @@ class SupabaseService:
         """
         filter_info = f" (category: {product_category})" if product_category else ""
         logger.debug(f"Fetching active subscriptions{filter_info}")
-        
+
         if not cls.client:
             logger.info("Client not initialized, attempting connection")
             cls.connect()

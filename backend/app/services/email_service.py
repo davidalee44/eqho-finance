@@ -4,17 +4,18 @@ Handles all transactional emails for Eqho Investor Deck
 """
 
 import os
+from typing import Any, Dict
+
 import requests
-from typing import Optional, Dict, Any
 
 
 class EmailService:
     """Service for sending emails via Resend API"""
-    
+
     RESEND_API_KEY = os.getenv('RESEND_API_KEY')
     RESEND_API_URL = 'https://api.resend.com/emails'
     FROM_EMAIL = 'Eqho Investor Relations <investors@eqho.ai>'
-    
+
     @classmethod
     def send_investor_invite(
         cls,
@@ -31,7 +32,7 @@ class EmailService:
             invite_url: Link to create account / sign in
         """
         subject = "You're Invited: Eqho $500K Seed Round"
-        
+
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -79,9 +80,9 @@ class EmailService:
         </body>
         </html>
         """
-        
+
         return cls._send_email(to_email, subject, html_content)
-    
+
     @classmethod
     def send_welcome_email(
         cls,
@@ -96,7 +97,7 @@ class EmailService:
             user_name: User's full name
         """
         subject = "Welcome to Eqho Investor Portal"
-        
+
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -139,9 +140,9 @@ class EmailService:
         </body>
         </html>
         """
-        
+
         return cls._send_email(to_email, subject, html_content)
-    
+
     @classmethod
     def send_deck_access_notification(
         cls,
@@ -160,7 +161,7 @@ class EmailService:
             user_role: User's role (investor/sales/admin)
         """
         subject = f"New Access: {user_name} viewed Investor Deck"
-        
+
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -180,9 +181,9 @@ class EmailService:
         </body>
         </html>
         """
-        
+
         return cls._send_email(admin_email, subject, html_content)
-    
+
     @classmethod
     def send_deal_update(
         cls,
@@ -199,7 +200,7 @@ class EmailService:
             update_content: Update content (supports HTML)
         """
         subject = f"Eqho Update: {update_title}"
-        
+
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -231,9 +232,9 @@ class EmailService:
         </body>
         </html>
         """
-        
+
         return cls._send_email(to_email, subject, html_content)
-    
+
     @classmethod
     def _send_email(
         cls,
@@ -254,19 +255,19 @@ class EmailService:
         """
         if not cls.RESEND_API_KEY:
             raise ValueError("RESEND_API_KEY not set in environment")
-        
+
         headers = {
             'Authorization': f'Bearer {cls.RESEND_API_KEY}',
             'Content-Type': 'application/json'
         }
-        
+
         payload = {
             'from': cls.FROM_EMAIL,
             'to': [to],
             'subject': subject,
             'html': html
         }
-        
+
         try:
             response = requests.post(
                 cls.RESEND_API_URL,
@@ -278,7 +279,7 @@ class EmailService:
         except requests.exceptions.RequestException as e:
             print(f"Error sending email: {e}")
             return {'error': str(e)}
-    
+
     @classmethod
     def _get_timestamp(cls) -> str:
         """Get formatted timestamp for emails"""

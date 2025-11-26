@@ -3,13 +3,8 @@ Snapshot Service for Version Control
 Handles saving, retrieving, and managing report snapshots
 """
 import logging
-from datetime import datetime
 from typing import Any, Dict, List, Optional
-from uuid import UUID
 
-from supabase import Client
-
-from app.core.config import settings
 from app.services.supabase_service import SupabaseService
 
 logger = logging.getLogger(__name__)

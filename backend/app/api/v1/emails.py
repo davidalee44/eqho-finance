@@ -3,11 +3,11 @@ Email API endpoints
 Handles sending transactional emails via Resend
 """
 
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
-from app.services.email_service import EmailService
-from typing import Optional
 
+from app.services.email_service import EmailService
 
 router = APIRouter()
 
@@ -59,10 +59,10 @@ async def send_investor_invite(request: InvestorInviteRequest):
             investor_name=request.investor_name,
             invite_url=request.invite_url
         )
-        
+
         if 'error' in result:
             raise HTTPException(status_code=500, detail=result['error'])
-        
+
         return {
             "success": True,
             "message": f"Invitation sent to {request.to_email}",
@@ -89,10 +89,10 @@ async def send_welcome_email(request: WelcomeEmailRequest):
             to_email=request.to_email,
             user_name=request.user_name
         )
-        
+
         if 'error' in result:
             raise HTTPException(status_code=500, detail=result['error'])
-        
+
         return {
             "success": True,
             "message": f"Welcome email sent to {request.to_email}",
@@ -121,10 +121,10 @@ async def send_deal_update(request: DealUpdateRequest):
             update_title=request.update_title,
             update_content=request.update_content
         )
-        
+
         if 'error' in result:
             raise HTTPException(status_code=500, detail=result['error'])
-        
+
         return {
             "success": True,
             "message": f"Update sent to {request.to_email}",
@@ -155,10 +155,10 @@ async def send_access_notification(request: AccessNotificationRequest):
             user_name=request.user_name,
             user_role=request.user_role
         )
-        
+
         if 'error' in result:
             raise HTTPException(status_code=500, detail=result['error'])
-        
+
         return {
             "success": True,
             "message": f"Notification sent to {request.admin_email}",
