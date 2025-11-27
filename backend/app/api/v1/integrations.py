@@ -14,9 +14,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
-from app.services.pipedream_service import pipedream_service
-from app.services.metrics_cache_service import MetricsCacheService
 from app.core.config import settings
+from app.services.pipedream_service import pipedream_service
 
 logger = logging.getLogger(__name__)
 
@@ -59,9 +58,9 @@ async def verify_admin(request: Request) -> bool:
     """
     admin_header = request.headers.get("X-Admin-Access")
     admin_param = request.query_params.get("admin")
-    
+
     logger.info(f"Integrations API access: admin_header={admin_header}, admin_param={admin_param}")
-    
+
     # TODO: Implement proper JWT validation with role checking
     # For now, return True to allow access (frontend handles auth)
     return True
@@ -70,10 +69,10 @@ async def verify_admin(request: Request) -> bool:
 async def get_supabase_client():
     """Get Supabase client for database operations"""
     from supabase import create_client
-    
+
     if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
         return None
-    
+
     return create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
 
 
@@ -124,14 +123,14 @@ async def get_all_connection_status(
         # Get stored connections from Supabase
         supabase = await get_supabase_client()
         connections = {}
-        
+
         if supabase:
             query = supabase.table("pipedream_connections").select("*")
             if user_id:
                 query = query.eq("user_id", user_id)
-            
+
             result = query.execute()
-            
+
             for conn in result.data or []:
                 connections[conn["app"]] = {
                     "status": conn["status"],
@@ -139,7 +138,7 @@ async def get_all_connection_status(
                     "connected_at": conn["connected_at"],
                     "metadata": conn.get("metadata", {}),
                 }
-        
+
         # Build response with all supported apps
         apps_status = []
         for app_id, app_config in pipedream_service.SUPPORTED_APPS.items():
@@ -154,13 +153,13 @@ async def get_all_connection_status(
                 "connected_at": conn.get("connected_at"),
                 "last_sync": conn.get("metadata", {}).get("last_sync"),
             })
-        
+
         return {
             "pipedream_configured": pipedream_service.is_configured,
             "connections": apps_status,
             "timestamp": datetime.now().isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Error getting connection status: {e}", exc_info=True)
         raise HTTPException(
@@ -192,13 +191,13 @@ async def get_connection_status(
             status_code=400,
             detail=f"Unsupported app: {app}. Supported: {list(pipedream_service.SUPPORTED_APPS.keys())}"
         )
-    
+
     try:
         supabase = await get_supabase_client()
-        
+
         if not supabase:
             raise HTTPException(status_code=500, detail="Database not configured")
-        
+
         # Get connection from database
         result = (
             supabase.table("pipedream_connections")
@@ -207,17 +206,17 @@ async def get_connection_status(
             .limit(1)
             .execute()
         )
-        
+
         app_config = pipedream_service.SUPPORTED_APPS[app]
-        
+
         if result.data:
             conn = result.data[0]
-            
+
             # Optionally verify with Pipedream
             account_status = None
             if conn.get("account_id") and pipedream_service.is_configured:
                 account_status = await pipedream_service.get_account(conn["account_id"])
-            
+
             return {
                 "app": app,
                 "app_name": app_config["name"],
@@ -227,7 +226,7 @@ async def get_connection_status(
                 "metadata": conn.get("metadata", {}),
                 "pipedream_verified": account_status is not None,
             }
-        
+
         return {
             "app": app,
             "app_name": app_config["name"],
@@ -235,7 +234,7 @@ async def get_connection_status(
             "account_id": None,
             "connected_at": None,
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -270,25 +269,25 @@ async def initiate_connection(
             status_code=400,
             detail=f"Unsupported app: {app}. Supported: {list(pipedream_service.SUPPORTED_APPS.keys())}"
         )
-    
+
     if not pipedream_service.is_configured:
         raise HTTPException(
             status_code=503,
             detail="Pipedream Connect is not configured. Please set PIPEDREAM_PROJECT_ID and PIPEDREAM_CLIENT_SECRET."
         )
-    
+
     try:
         # Use a consistent external_user_id for the admin team
         # In a multi-tenant setup, this would be the organization/user ID
         external_user_id = "eqho-admin"
-        
+
         # Create connect token
         token_data = await pipedream_service.create_connect_token(
             external_user_id=external_user_id,
             app=app,
             redirect_uri=request.redirect_uri or "http://localhost:5173/admin/integrations",
         )
-        
+
         return {
             "success": True,
             "app": app,
@@ -297,7 +296,7 @@ async def initiate_connection(
             "expires_at": token_data.get("expires_at"),
             "instructions": f"Redirect user to connect_url to complete {app} authorization",
         }
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -331,23 +330,23 @@ async def handle_callback(
     """
     try:
         body = await request.json()
-        
+
         event = body.get("event")
         account_id = body.get("account_id")
         external_user_id = body.get("external_user_id")
         app = body.get("app")
-        
+
         logger.info(f"Pipedream callback: event={event}, app={app}, account_id={account_id}")
-        
+
         supabase = await get_supabase_client()
         if not supabase:
             raise HTTPException(status_code=500, detail="Database not configured")
-        
+
         if event == "connect":
             # New connection established
             # Upsert connection record
             now = datetime.now(timezone.utc).isoformat()
-            
+
             # Check if connection exists
             existing = (
                 supabase.table("pipedream_connections")
@@ -356,7 +355,7 @@ async def handle_callback(
                 .limit(1)
                 .execute()
             )
-            
+
             if existing.data:
                 # Update existing
                 supabase.table("pipedream_connections").update({
@@ -377,18 +376,18 @@ async def handle_callback(
                     "connected_at": now,
                     "metadata": body.get("metadata", {}),
                 }).execute()
-            
+
             logger.info(f"✅ Connection stored for {app}")
-            
+
         elif event == "disconnect":
             # Connection removed
             supabase.table("pipedream_connections").update({
                 "status": "disconnected",
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }).eq("account_id", account_id).execute()
-            
+
             logger.info(f"🔌 Disconnected {app}")
-            
+
         elif event == "error":
             # Connection error
             supabase.table("pipedream_connections").update({
@@ -396,11 +395,11 @@ async def handle_callback(
                 "updated_at": datetime.now(timezone.utc).isoformat(),
                 "metadata": {"error": body.get("error", "Unknown error")},
             }).eq("account_id", account_id).execute()
-            
+
             logger.error(f"❌ Connection error for {app}: {body.get('error')}")
-        
+
         return {"status": "ok", "event": event}
-        
+
     except Exception as e:
         logger.error(f"Error handling callback: {e}", exc_info=True)
         raise HTTPException(
@@ -430,12 +429,12 @@ async def disconnect_app(
             status_code=400,
             detail=f"Unsupported app: {app}. Supported: {list(pipedream_service.SUPPORTED_APPS.keys())}"
         )
-    
+
     try:
         supabase = await get_supabase_client()
         if not supabase:
             raise HTTPException(status_code=500, detail="Database not configured")
-        
+
         # Get the connection
         result = (
             supabase.table("pipedream_connections")
@@ -444,31 +443,31 @@ async def disconnect_app(
             .limit(1)
             .execute()
         )
-        
+
         if not result.data:
             return {"success": True, "message": f"{app} was not connected"}
-        
+
         conn = result.data[0]
         account_id = conn.get("account_id")
-        
+
         # Delete from Pipedream
         if account_id and pipedream_service.is_configured:
             await pipedream_service.delete_account(account_id)
-        
+
         # Update database
         supabase.table("pipedream_connections").update({
             "status": "disconnected",
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }).eq("id", conn["id"]).execute()
-        
+
         logger.info(f"🔌 Disconnected {app}")
-        
+
         return {
             "success": True,
             "message": f"Disconnected {app}",
             "app": app,
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -501,12 +500,12 @@ async def trigger_sync(
             status_code=400,
             detail=f"Unsupported app: {app}. Supported: {list(pipedream_service.SUPPORTED_APPS.keys())}"
         )
-    
+
     try:
         supabase = await get_supabase_client()
         if not supabase:
             raise HTTPException(status_code=500, detail="Database not configured")
-        
+
         # Get the connection
         result = (
             supabase.table("pipedream_connections")
@@ -516,19 +515,19 @@ async def trigger_sync(
             .limit(1)
             .execute()
         )
-        
+
         if not result.data:
             raise HTTPException(
                 status_code=400,
                 detail=f"{app} is not connected. Please connect first."
             )
-        
+
         conn = result.data[0]
         account_id = conn.get("account_id")
-        
+
         # Perform app-specific sync
         sync_result = await _sync_app_data(app, account_id)
-        
+
         # Update last sync timestamp
         supabase.table("pipedream_connections").update({
             "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -538,7 +537,7 @@ async def trigger_sync(
                 "last_sync_status": "success" if sync_result.get("success") else "error",
             },
         }).eq("id", conn["id"]).execute()
-        
+
         return {
             "success": sync_result.get("success", False),
             "app": app,
@@ -546,7 +545,7 @@ async def trigger_sync(
             "data_summary": sync_result.get("summary"),
             "timestamp": datetime.now().isoformat(),
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -579,12 +578,12 @@ async def test_connection(
             status_code=400,
             detail=f"Unsupported app: {app}. Supported: {list(pipedream_service.SUPPORTED_APPS.keys())}"
         )
-    
+
     try:
         supabase = await get_supabase_client()
         if not supabase:
             raise HTTPException(status_code=500, detail="Database not configured")
-        
+
         # Get the connection
         result = (
             supabase.table("pipedream_connections")
@@ -593,32 +592,32 @@ async def test_connection(
             .limit(1)
             .execute()
         )
-        
+
         if not result.data:
             return {
                 "app": app,
                 "status": "disconnected",
                 "message": f"{app} is not connected",
             }
-        
+
         conn = result.data[0]
         account_id = conn.get("account_id")
-        
+
         if not account_id:
             return {
                 "app": app,
                 "status": "error",
                 "message": "No account_id found",
             }
-        
+
         # Test via Pipedream
         test_result = await pipedream_service.test_connection(account_id, app)
-        
+
         return {
             "app": app,
             **test_result,
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -643,17 +642,16 @@ async def _sync_app_data(app: str, account_id: str) -> dict:
     try:
         if app == "quickbooks":
             # Sync QuickBooks data via Pipedream
-            from app.services.quickbooks_service import quickbooks_service
-            
+
             # Get credentials from Pipedream
             creds = await pipedream_service.get_account_credentials(account_id)
             if not creds:
                 return {"success": False, "message": "Failed to get QuickBooks credentials"}
-            
+
             # Use credentials to fetch data
             # For now, just verify we can access the API
             account = await pipedream_service.get_account(account_id)
-            
+
             return {
                 "success": True,
                 "message": "QuickBooks sync completed",
@@ -662,14 +660,14 @@ async def _sync_app_data(app: str, account_id: str) -> dict:
                     "account_name": account.get("name") if account else "Unknown",
                 },
             }
-        
+
         elif app == "stripe":
             # Stripe already has direct API access
             from app.services.stripe_service import StripeService
-            
+
             # Just verify Stripe is working
             balance = StripeService.get_stripe_balance()
-            
+
             return {
                 "success": True,
                 "message": "Stripe sync completed",
@@ -678,7 +676,7 @@ async def _sync_app_data(app: str, account_id: str) -> dict:
                     "balance_pending": balance.get("pending", 0),
                 },
             }
-        
+
         elif app == "google_sheets":
             # Google Sheets doesn't need regular sync
             return {
@@ -686,7 +684,7 @@ async def _sync_app_data(app: str, account_id: str) -> dict:
                 "message": "Google Sheets ready for export",
                 "summary": {"status": "connected"},
             }
-        
+
         elif app == "slack":
             # Test Slack connection
             test_result = await pipedream_service.test_connection(account_id, app)
@@ -695,9 +693,9 @@ async def _sync_app_data(app: str, account_id: str) -> dict:
                 "message": test_result.get("message", "Slack sync completed"),
                 "summary": {"status": test_result.get("status")},
             }
-        
+
         return {"success": False, "message": f"No sync handler for {app}"}
-        
+
     except Exception as e:
         logger.error(f"Sync error for {app}: {e}")
         return {"success": False, "message": str(e)}

@@ -51,7 +51,7 @@ class CashFlowService:
                         'cache_timestamp': cached.get('fetched_at'),
                         'warning': 'QuickBooks not configured - using cached data',
                     }
-                
+
                 # Return placeholder if no cached data
                 return {
                     'cash_on_hand': 0,
@@ -134,28 +134,28 @@ class CashFlowService:
         bank_data = await CashFlowService.get_bank_balances()
         stripe_data = await CashFlowService.get_stripe_balance()
         billings_data = await CashFlowService.get_upcoming_billings()
-        
+
         # Calculate total cash position
         qb_cash = bank_data.get('cash_on_hand', 0) or 0
         stripe_available = stripe_data.get('total_available_usd', 0) or 0
         stripe_pending = stripe_data.get('total_pending_usd', 0) or 0
-        
+
         total_cash = qb_cash + stripe_available
         total_with_pending = total_cash + stripe_pending
-        
+
         # Get receivables and payables
         ar = bank_data.get('accounts_receivable', 0) or 0
         ap = bank_data.get('accounts_payable', 0) or 0
-        
+
         # Net working capital
         net_working_capital = total_cash + ar - ap
-        
+
         # Upcoming inflows
         expected_today = billings_data.get('today', {}).get('total', 0)
         expected_tomorrow = billings_data.get('tomorrow', {}).get('total', 0)
         expected_week = billings_data.get('this_week', {}).get('total', 0)
         expected_month = billings_data.get('this_month', {}).get('total', 0)
-        
+
         # Build summary
         summary = {
             'bank_balances': {
@@ -209,14 +209,14 @@ class CashFlowService:
             },
             'timestamp': datetime.now().isoformat(),
         }
-        
+
         # Cache the summary
         await MetricsCacheService.save_metrics(
             metric_type="cashflow_summary",
             data=summary,
             source="aggregated"
         )
-        
+
         return summary
 
     @staticmethod
@@ -231,19 +231,19 @@ class CashFlowService:
         """
         if monthly_revenue <= 0:
             return 0
-        
+
         # Assume a 60% gross margin and 80% of revenue covers operating costs
         # This is a rough estimate - actual should use real expense data
         estimated_monthly_burn = monthly_revenue * 0.8  # Rough operating cost estimate
-        
+
         if estimated_monthly_burn <= 0:
             return 365  # Default to 1 year if no burn
-        
+
         # Days of runway
         monthly_net = monthly_revenue - estimated_monthly_burn
         if monthly_net >= 0:
             return 365  # Cash flow positive, unlimited runway
-        
+
         runway_months = cash_on_hand / abs(monthly_net)
         return int(runway_months * 30)
 
@@ -258,7 +258,7 @@ class CashFlowService:
         try:
             payouts = await StripeService.get_recent_payouts(limit=5)
             pending_charges = await StripeService.get_pending_charges()
-            
+
             return {
                 'recent_payouts': payouts,
                 'pending_charges': pending_charges,
@@ -289,10 +289,10 @@ class CashFlowService:
         try:
             # Get extended billing data
             billings = await StripeService.get_upcoming_billings(days=days)
-            
+
             # For now, return the standard billings with extended projections
             monthly_recurring = billings.get('this_month', {}).get('total', 0)
-            
+
             return {
                 'next_30_days': monthly_recurring,
                 'next_60_days': monthly_recurring * 2,  # Simplified projection

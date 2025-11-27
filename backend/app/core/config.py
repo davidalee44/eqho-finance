@@ -1,6 +1,10 @@
+from pathlib import Path
 from typing import List
 
 from pydantic_settings import BaseSettings
+
+# Calculate path to backend/.env relative to this file
+_ENV_FILE_PATH = Path(__file__).parent.parent.parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -48,7 +52,8 @@ class Settings(BaseSettings):
     QUICKBOOKS_USE_SANDBOX: bool = False  # Set to True for sandbox/development
 
     class Config:
-        env_file = ".env"
+        # Look for .env in backend directory (relative to this file)
+        env_file = str(_ENV_FILE_PATH)
         case_sensitive = True
         extra = "ignore"  # Allow extra env vars without validation errors
 

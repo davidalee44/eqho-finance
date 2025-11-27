@@ -1,7 +1,14 @@
+import logging
 from typing import Dict
 
 from app.services.cache_service import cache_service
 from app.services.stripe_service import StripeService
+
+logger = logging.getLogger(__name__)
+
+# Fallback values if retention service fails
+FALLBACK_LTV = 14100
+FALLBACK_GROSS_MARGIN = 0.558
 
 
 class MetricsCalculator:
@@ -54,9 +61,20 @@ class MetricsCalculator:
         cac_sales = 450
         cac_marketing = 381
 
-        # LTV calculation (36-month horizon @ 69% gross margin)
-        average_ltv = 14100
-        gross_margin = 0.69
+        # LTV calculation - try to get from retention service, fallback to hardcoded
+        try:
+            from app.services.retention_service import RetentionService
+
+            # Get LTV from retention analysis
+            ltv_data = await RetentionService.get_ltv_calculation()
+            average_ltv = ltv_data.get("ltv_value", FALLBACK_LTV)
+            gross_margin = ltv_data.get("inputs", {}).get("gross_margin", FALLBACK_GROSS_MARGIN)
+            ltv_source = "calculated"
+        except Exception as e:
+            logger.warning(f"Failed to calculate LTV from retention data: {e}. Using fallback.")
+            average_ltv = FALLBACK_LTV
+            gross_margin = FALLBACK_GROSS_MARGIN
+            ltv_source = "fallback"
 
         # LTV/CAC ratio
         ltv_cac_ratio = round(average_ltv / cac_total, 2) if cac_total > 0 else 0
@@ -95,6 +113,7 @@ class MetricsCalculator:
                 "average_ltv": average_ltv,
                 "ltv_cac_ratio": ltv_cac_ratio,
                 "cac_payback_months": cac_payback_months,
+                "ltv_source": ltv_source,
             },
             "financial_metrics": {
                 "gross_margin_percentage": gross_margin * 100,

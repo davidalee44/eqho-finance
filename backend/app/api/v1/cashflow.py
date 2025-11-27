@@ -9,7 +9,6 @@ Security: All endpoints require admin role verification.
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
@@ -32,14 +31,14 @@ async def verify_admin(request: Request) -> bool:
     """
     # Check for admin header (set by frontend after auth)
     admin_header = request.headers.get("X-Admin-Access")
-    
+
     # For development, also allow a query param
     admin_param = request.query_params.get("admin")
-    
+
     # In production, this should validate JWT claims
     # For now, we'll allow access but log the request
     logger.info(f"CashFlow API access: admin_header={admin_header}, admin_param={admin_param}")
-    
+
     # TODO: Implement proper JWT validation with role checking
     # For now, return True to allow access (frontend handles auth)
     return True
@@ -79,12 +78,12 @@ async def get_cashflow_summary(
                         'is_cached': True,
                         'cache_age_seconds': int(cache_age.total_seconds()),
                     }
-        
+
         # Fetch fresh data
         summary = await CashFlowService.get_cashflow_summary()
-        
+
         return summary
-        
+
     except Exception as e:
         logger.error(f"Error fetching cashflow summary: {e}", exc_info=True)
         raise HTTPException(
@@ -236,16 +235,16 @@ async def get_cashflow_status():
     
     This endpoint is not admin-protected for health checking.
     """
-    from app.services.quickbooks_service import quickbooks_service
     from app.core.config import settings
-    
+    from app.services.quickbooks_service import quickbooks_service
+
     # Check QuickBooks status
     qb_configured = quickbooks_service.is_configured
     qb_cached = await MetricsCacheService.get_latest_metrics("quickbooks_cash_position")
-    
+
     # Check Stripe status
     stripe_configured = bool(settings.STRIPE_SECRET_KEY)
-    
+
     # Check cache freshness
     cashflow_cache = await MetricsCacheService.get_latest_metrics("cashflow_summary")
     cache_age = None
@@ -255,7 +254,7 @@ async def get_cashflow_status():
         )
         now = datetime.now(timezone.utc)
         cache_age = int((now - cache_time).total_seconds())
-    
+
     return {
         'quickbooks': {
             'configured': qb_configured,

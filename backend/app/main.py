@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import (
+    attrition,
     audit,
     cache,
     cashflow,
@@ -19,7 +20,7 @@ from app.api.v1 import (
     stripe_data,
 )
 from app.core.config import settings
-from app.core.env_validator import validate_env, print_validation_report
+from app.core.env_validator import validate_env
 from app.services.supabase_service import SupabaseService
 
 # Configure logging
@@ -47,7 +48,7 @@ app = FastAPI(
 async def startup_event():
     """Initialize services on startup"""
     logger.info("🚀 Starting Eqho Due Diligence API...")
-    
+
     # Validate environment variables (warn but don't fail for optional vars)
     env_result = validate_env(raise_on_error=True, verbose=False)
     if env_result['warnings']:
@@ -55,7 +56,7 @@ async def startup_event():
             logger.warning(f"⚠️  {warning}")
     if env_result['missing_optional']:
         logger.info(f"Optional env vars not set: {', '.join(env_result['missing_optional'])}")
-    
+
     logger.info(f"CORS Origins: {settings.CORS_ORIGINS}")
     SupabaseService.connect()
     logger.info("✅ Startup complete")
@@ -79,6 +80,7 @@ app.include_router(
     customer_mrr.router, prefix="/api/v1/customer-mrr", tags=["Customer MRR"]
 )
 app.include_router(stripe_data.router, prefix="/api/v1/stripe", tags=["stripe"])
+app.include_router(attrition.router, prefix="/api/v1/attrition", tags=["attrition"])
 app.include_router(quickbooks.router, prefix="/api/v1/quickbooks", tags=["quickbooks"])
 app.include_router(cache.router, prefix="/api/v1/cache", tags=["cache"])
 app.include_router(snapshots.router, prefix="/api/v1/snapshots", tags=["snapshots"])

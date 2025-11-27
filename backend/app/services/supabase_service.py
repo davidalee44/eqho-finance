@@ -176,11 +176,15 @@ class SupabaseService:
         }
 
         # LTV and CAC calculations
-        average_ltv = 14100
+        # Note: Prefer using MetricsCalculator or RetentionService for dynamic LTV
+        # This synchronous method uses cached/fallback values
+        # See /api/v1/attrition/ltv for calculated LTV with methodology
+        average_ltv = 14100  # Fallback - actual LTV calculated by RetentionService
         ltv_cac_ratio = round(average_ltv / cac_metrics["total_cac"], 2)
 
         # CAC Payback calculation
-        gross_margin = 0.69
+        # Gross margin from P&L (55.8%) - update periodically from QuickBooks data
+        gross_margin = 0.558
         if towpilot_acv > 0:
             monthly_gross_profit = (towpilot_acv * gross_margin) / 12
             cac_payback_months = round(

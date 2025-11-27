@@ -64,7 +64,7 @@ class QuickBooksService:
         self._access_token: Optional[str] = None
         self._refresh_token: Optional[str] = None
         self._token_expires_at: Optional[datetime] = None
-        
+
         # Pipedream connection info (loaded lazily)
         self._pipedream_account_id: Optional[str] = None
 
@@ -91,12 +91,12 @@ class QuickBooksService:
         """
         try:
             from supabase import create_client
-            
+
             if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
                 return None
-            
+
             supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
-            
+
             result = (
                 supabase.table("pipedream_connections")
                 .select("*")
@@ -105,14 +105,14 @@ class QuickBooksService:
                 .limit(1)
                 .execute()
             )
-            
+
             if result.data:
                 conn = result.data[0]
                 self._pipedream_account_id = conn.get("account_id")
                 return conn
-            
+
             return None
-            
+
         except Exception as e:
             logger.error(f"Error getting Pipedream connection: {e}")
             return None
@@ -126,48 +126,48 @@ class QuickBooksService:
         """
         if not self.pipedream_configured:
             return False
-        
+
         try:
             from app.services.pipedream_service import pipedream_service
-            
+
             # Get connection info
             conn = await self._get_pipedream_connection()
             if not conn:
                 logger.debug("No active Pipedream QuickBooks connection found")
                 return False
-            
+
             account_id = conn.get("account_id")
             if not account_id:
                 return False
-            
+
             # Get credentials from Pipedream
             creds = await pipedream_service.get_account_credentials(account_id)
             if not creds:
                 logger.warning("Failed to get credentials from Pipedream")
                 return False
-            
+
             # Extract tokens
             oauth_token = creds.get("oauth_access_token") or creds.get("access_token")
             if oauth_token:
                 self._access_token = oauth_token
                 self._refresh_token = creds.get("oauth_refresh_token") or creds.get("refresh_token")
-                
+
                 # Set expiry to 1 hour from now (Pipedream handles refresh)
                 self._token_expires_at = datetime.now() + timedelta(hours=1)
-                
+
                 # Get realm_id from credentials or account metadata
                 self.realm_id = (
-                    creds.get("realm_id") or 
-                    creds.get("realmId") or 
+                    creds.get("realm_id") or
+                    creds.get("realmId") or
                     conn.get("metadata", {}).get("realm_id") or
                     self.realm_id
                 )
-                
+
                 logger.info("✅ Loaded QuickBooks tokens from Pipedream")
                 return True
-            
+
             return False
-            
+
         except Exception as e:
             logger.error(f"Error fetching tokens from Pipedream: {e}")
             return False
@@ -314,7 +314,7 @@ class QuickBooksService:
         if self.pipedream_configured:
             if await self._get_tokens_from_pipedream():
                 return True
-        
+
         # Fall back to cached direct OAuth tokens
         cached = await MetricsCacheService.get_latest_metrics("quickbooks_tokens")
         if cached and cached.get('data'):
@@ -328,7 +328,7 @@ class QuickBooksService:
             self.realm_id = data.get('realm_id') or self.realm_id
             logger.info("✅ Loaded QuickBooks tokens from cache")
             return True
-        
+
         return False
 
     async def _ensure_valid_token(self) -> str:
@@ -604,23 +604,23 @@ class QuickBooksService:
         """
         # QuickBooks uses SQL-like query syntax
         query = "SELECT * FROM Account WHERE AccountType IN ('Bank', 'Other Current Asset')"
-        
+
         try:
             data = await self._api_request('GET', 'query', {'query': query})
-            
+
             accounts = []
             total_balance = 0.0
-            
+
             # Parse the QueryResponse
             query_response = data.get('QueryResponse', {})
             account_list = query_response.get('Account', [])
-            
+
             for account in account_list:
                 account_name = account.get('Name', 'Unknown')
                 current_balance = float(account.get('CurrentBalance', 0) or 0)
                 account_type = account.get('AccountType', '')
                 account_subtype = account.get('AccountSubType', '')
-                
+
                 accounts.append({
                     'id': account.get('Id'),
                     'name': account_name,
@@ -630,27 +630,27 @@ class QuickBooksService:
                     'currency': account.get('CurrencyRef', {}).get('value', 'USD'),
                     'active': account.get('Active', True),
                 })
-                
+
                 # Only sum positive balances for bank accounts
                 if account_type == 'Bank':
                     total_balance += current_balance
-            
+
             result = {
                 'accounts': accounts,
                 'total_bank_balance': round(total_balance, 2),
                 'account_count': len(accounts),
                 'timestamp': datetime.now().isoformat(),
             }
-            
+
             # Cache the result
             await MetricsCacheService.save_metrics(
                 metric_type="quickbooks_account_balances",
                 data=result,
                 source="quickbooks"
             )
-            
+
             return result
-            
+
         except Exception as e:
             logger.error(f"Error fetching account balances: {e}")
             # Try to return cached data
@@ -672,20 +672,20 @@ class QuickBooksService:
         """
         balances = await self.get_account_balances()
         accounts = balances.get('accounts', [])
-        
+
         # Group by subtype
         checking_total = 0.0
         savings_total = 0.0
         other_total = 0.0
-        
+
         checking_accounts = []
         savings_accounts = []
         other_accounts = []
-        
+
         for account in accounts:
             subtype = account.get('subtype', '').lower()
             balance = account.get('balance', 0)
-            
+
             if 'checking' in subtype:
                 checking_total += balance
                 checking_accounts.append(account)
@@ -695,7 +695,7 @@ class QuickBooksService:
             else:
                 other_total += balance
                 other_accounts.append(account)
-        
+
         return {
             'checking': {
                 'total': round(checking_total, 2),
@@ -721,16 +721,16 @@ class QuickBooksService:
             Dict with AR balance and aging if available
         """
         query = "SELECT * FROM Account WHERE AccountType = 'Accounts Receivable'"
-        
+
         try:
             data = await self._api_request('GET', 'query', {'query': query})
-            
+
             query_response = data.get('QueryResponse', {})
             ar_accounts = query_response.get('Account', [])
-            
+
             total_ar = 0.0
             accounts = []
-            
+
             for account in ar_accounts:
                 balance = float(account.get('CurrentBalance', 0) or 0)
                 total_ar += balance
@@ -739,13 +739,13 @@ class QuickBooksService:
                     'name': account.get('Name'),
                     'balance': balance,
                 })
-            
+
             return {
                 'total_receivable': round(total_ar, 2),
                 'accounts': accounts,
                 'timestamp': datetime.now().isoformat(),
             }
-            
+
         except Exception as e:
             logger.error(f"Error fetching accounts receivable: {e}")
             return {
@@ -763,16 +763,16 @@ class QuickBooksService:
             Dict with AP balance
         """
         query = "SELECT * FROM Account WHERE AccountType = 'Accounts Payable'"
-        
+
         try:
             data = await self._api_request('GET', 'query', {'query': query})
-            
+
             query_response = data.get('QueryResponse', {})
             ap_accounts = query_response.get('Account', [])
-            
+
             total_ap = 0.0
             accounts = []
-            
+
             for account in ap_accounts:
                 balance = float(account.get('CurrentBalance', 0) or 0)
                 total_ap += balance
@@ -781,13 +781,13 @@ class QuickBooksService:
                     'name': account.get('Name'),
                     'balance': balance,
                 })
-            
+
             return {
                 'total_payable': round(total_ap, 2),
                 'accounts': accounts,
                 'timestamp': datetime.now().isoformat(),
             }
-            
+
         except Exception as e:
             logger.error(f"Error fetching accounts payable: {e}")
             return {
@@ -809,14 +809,14 @@ class QuickBooksService:
             bank_summary = await self.get_bank_accounts_summary()
             ar_summary = await self.get_accounts_receivable()
             ap_summary = await self.get_accounts_payable()
-            
+
             total_cash = bank_summary.get('grand_total', 0)
             total_ar = ar_summary.get('total_receivable', 0)
             total_ap = ap_summary.get('total_payable', 0)
-            
+
             # Net cash position = cash + receivables - payables
             net_position = total_cash + total_ar - total_ap
-            
+
             result = {
                 'cash_on_hand': total_cash,
                 'accounts_receivable': total_ar,
@@ -827,16 +827,16 @@ class QuickBooksService:
                 'ap_details': ap_summary,
                 'timestamp': datetime.now().isoformat(),
             }
-            
+
             # Cache the result
             await MetricsCacheService.save_metrics(
                 metric_type="quickbooks_cash_position",
                 data=result,
                 source="quickbooks"
             )
-            
+
             return result
-            
+
         except Exception as e:
             logger.error(f"Error fetching cash position: {e}")
             # Try cached data

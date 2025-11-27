@@ -14,7 +14,6 @@ Flow:
 """
 
 import logging
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -91,13 +90,13 @@ class PipedreamService:
         The format depends on the endpoint - some use Bearer, some use Basic.
         """
         import base64
-        
+
         # Try Bearer with client_secret first (standard OAuth2 style)
         headers = {
             "Content-Type": "application/json",
             "X-PD-Environment": self.environment,
         }
-        
+
         # If we have both client_id and client_secret, use Basic Auth
         if self.client_id and self.client_secret:
             credentials = base64.b64encode(
@@ -107,7 +106,7 @@ class PipedreamService:
         elif self.client_secret:
             # Fallback to Bearer with secret only
             headers["Authorization"] = f"Bearer {self.client_secret}"
-        
+
         return headers
 
     async def create_connect_token(
@@ -144,25 +143,25 @@ class PipedreamService:
         if redirect_uri:
             payload["success_redirect_uri"] = redirect_uri
             payload["error_redirect_uri"] = redirect_uri
-        
+
         # Include project_id if available
         if self.project_id:
             payload["project_id"] = self.project_id
 
         headers = self._get_auth_headers()
-        
+
         # Try multiple endpoint formats
         endpoints_to_try = [
             f"{PIPEDREAM_API_BASE}/connect/tokens",
             f"{PIPEDREAM_API_BASE}/connect/{self.project_id}/tokens" if self.project_id else None,
             f"https://api.pipedream.com/v1/projects/{self.project_id}/connect/tokens" if self.project_id else None,
         ]
-        
+
         last_error = None
         for endpoint in endpoints_to_try:
             if not endpoint:
                 continue
-                
+
             try:
                 async with httpx.AsyncClient() as client:
                     logger.debug(f"Trying Pipedream endpoint: {endpoint}")
@@ -182,16 +181,16 @@ class PipedreamService:
                             "app": app,
                             "app_name": app_config["name"],
                         }
-                    
+
                     # Log but continue trying other endpoints
                     logger.debug(f"Endpoint {endpoint} returned {response.status_code}: {response.text[:200]}")
                     last_error = f"{response.status_code}: {response.text[:200]}"
-                    
+
             except Exception as e:
                 logger.debug(f"Endpoint {endpoint} failed: {e}")
                 last_error = str(e)
                 continue
-        
+
         # All endpoints failed
         logger.error(f"All Pipedream endpoints failed. Last error: {last_error}")
         raise Exception(f"Failed to create connect token: {last_error}")

@@ -65,27 +65,82 @@ export function AppRouter() {
   useEffect(() => {
     let isMounted = true
     
-    // Timeout to prevent infinite loading
+    // Try to read session from localStorage synchronously as fallback
+    const getSessionFromStorage = () => {
+      try {
+        // Supabase stores session with key pattern: sb-{projectRef}-auth-token
+        const keys = Object.keys(localStorage)
+        const sessionKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+        if (sessionKey) {
+          const stored = localStorage.getItem(sessionKey)
+          if (stored) {
+            const parsed = JSON.parse(stored)
+            return parsed?.user || null
+          }
+        }
+      } catch (e) {
+        console.error('[AppRouter] Failed to read session from storage:', e)
+      }
+      return null
+    }
+    
+    // Timeout to prevent infinite loading - use localStorage fallback
     const timeoutId = setTimeout(() => {
       if (isMounted && loading) {
-        console.warn('[AppRouter] Auth timeout - forcing load complete')
+        console.warn('[AppRouter] Auth timeout - trying localStorage fallback')
+        const user = getSessionFromStorage()
+        if (user) {
+          console.log('[AppRouter] Recovered user from localStorage:', user.email)
+          setUserProfile({
+            email: user.email,
+            name: user.user_metadata?.name || user.user_metadata?.full_name,
+            role: user.user_metadata?.role || 'investor',
+            app_access: user.user_metadata?.app_access || ['investor-deck'],
+            company: user.user_metadata?.company,
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0]
+          })
+        }
         setLoading(false)
       }
-    }, 10000) // 10 second timeout
+    }, 5000) // Reduced to 5 second timeout
 
     async function getUserProfile() {
       try {
-        console.log('[AppRouter] Fetching user...')
-        // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        console.log('[AppRouter] Fetching session...')
+        // Use getSession() for fast cached lookup instead of getUser() which makes network call
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        console.log('[AppRouter] Session result:', session ? 'found' : 'null', sessionError ? `error: ${sessionError.message}` : 'no error')
         
         if (!isMounted) return
         
-        if (userError) throw userError
+        if (sessionError) throw sessionError
         
-        console.log('[AppRouter] User:', user?.email || 'not logged in')
+        const user = session?.user
+        console.log('[AppRouter] User:', user?.email || 'not logged in', 'role:', user?.user_metadata?.role)
         
         if (user) {
+          // Skip user_profiles table query if we have user_metadata with role
+          // This avoids network delays for tables that may not exist
+          const hasMetadataRole = user.user_metadata?.role
+          
+          if (hasMetadataRole) {
+            console.log('[AppRouter] Using user_metadata directly, role:', hasMetadataRole)
+            if (!isMounted) return
+            setUserProfile({
+              email: user.email,
+              name: user.user_metadata?.name || user.user_metadata?.full_name,
+              role: user.user_metadata?.role || 'investor',
+              app_access: user.user_metadata?.app_access || ['investor-deck'],
+              company: user.user_metadata?.company,
+              full_name: user.user_metadata?.full_name || user.email?.split('@')[0]
+            })
+            console.log('[AppRouter] Setting loading to false (fast path)')
+            setLoading(false)
+            return
+          }
+          
+          console.log('[AppRouter] Fetching user_profiles from database...')
           // Try to fetch user profile from database (graceful fallback if table doesn't exist)
           const { data: profile, error: profileError } = await supabase
             .from('user_profiles')
