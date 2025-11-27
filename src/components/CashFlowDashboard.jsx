@@ -6,7 +6,7 @@
  * - Stripe balance (available + pending)
  * - Upcoming billings by time period and cohort
  * 
- * Designed for investor-ready cash flow analysis.
+ * Light theme design matching the financial reports and slides.
  */
 
 import React, { useState } from 'react';
@@ -19,7 +19,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
+// ============================================================================
 // Icons (inline SVGs for simplicity)
+// ============================================================================
+
 const RefreshIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
@@ -71,9 +74,10 @@ const SettingsIcon = () => (
   </svg>
 );
 
-/**
- * Format currency for display
- */
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
 const formatCurrency = (amount, options = {}) => {
   const { compact = false, showSign = false } = options;
   
@@ -98,9 +102,6 @@ const formatCurrency = (amount, options = {}) => {
   return formatted;
 };
 
-/**
- * Format relative time
- */
 const formatRelativeTime = (date) => {
   if (!date) return 'Never';
   
@@ -118,36 +119,44 @@ const formatRelativeTime = (date) => {
   return `${days}d ago`;
 };
 
-/**
- * Summary Card Component
- */
+// ============================================================================
+// Summary Card Component - Light Theme
+// ============================================================================
+
 const SummaryCard = ({ title, value, subtitle, icon: Icon, trend, variant = 'default' }) => {
   const variantStyles = {
-    default: 'bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700',
-    success: 'bg-gradient-to-br from-emerald-950 to-emerald-900 border-emerald-800',
-    warning: 'bg-gradient-to-br from-amber-950 to-amber-900 border-amber-800',
-    stripe: 'bg-gradient-to-br from-indigo-950 to-indigo-900 border-indigo-800',
+    default: 'bg-white border-gray-200',
+    success: 'bg-emerald-50 border-emerald-200',
+    warning: 'bg-amber-50 border-amber-200',
+    stripe: 'bg-indigo-50 border-indigo-200',
+  };
+
+  const iconBgStyles = {
+    default: 'bg-gray-100 text-gray-600',
+    success: 'bg-emerald-100 text-emerald-600',
+    warning: 'bg-amber-100 text-amber-600',
+    stripe: 'bg-indigo-100 text-indigo-600',
   };
 
   return (
-    <Card className={`${variantStyles[variant]} text-white border shadow-lg`}>
+    <Card className={`${variantStyles[variant]} border shadow-sm`}>
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-2">
-            <p className="text-sm font-medium text-slate-300">{title}</p>
-            <p className="text-3xl font-bold tracking-tight">{value}</p>
+            <p className="text-sm font-medium text-gray-500">{title}</p>
+            <p className="text-3xl font-bold tracking-tight text-gray-900">{value}</p>
             {subtitle && (
-              <p className="text-xs text-slate-400">{subtitle}</p>
+              <p className="text-xs text-gray-500">{subtitle}</p>
             )}
             {trend !== undefined && (
-              <div className={`flex items-center gap-1 text-xs ${trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              <div className={`flex items-center gap-1 text-xs ${trend >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 <TrendingUpIcon />
                 <span>{trend >= 0 ? '+' : ''}{trend}% vs last month</span>
               </div>
             )}
           </div>
           {Icon && (
-            <div className="p-3 bg-white/10 rounded-lg">
+            <div className={`p-3 rounded-lg ${iconBgStyles[variant]}`}>
               <Icon />
             </div>
           )}
@@ -157,29 +166,30 @@ const SummaryCard = ({ title, value, subtitle, icon: Icon, trend, variant = 'def
   );
 };
 
-/**
- * Billing Row Component
- */
+// ============================================================================
+// Billing Row Component
+// ============================================================================
+
 const BillingRow = ({ billing }) => (
-  <TableRow className="hover:bg-slate-800/50 transition-colors">
+  <TableRow className="hover:bg-gray-50 transition-colors">
     <TableCell className="font-medium">
       <div>
-        <p className="text-sm">{billing.customer_name || billing.customer_email || 'Unknown'}</p>
-        <p className="text-xs text-slate-500">{billing.customer_email}</p>
+        <p className="text-sm text-gray-900">{billing.customer_name || billing.customer_email || 'Unknown'}</p>
+        <p className="text-xs text-gray-500">{billing.customer_email}</p>
       </div>
     </TableCell>
     <TableCell>
       <Badge 
         variant="outline" 
-        className={billing.cohort === 'towpilot' ? 'border-blue-500 text-blue-400' : 'border-purple-500 text-purple-400'}
+        className={billing.cohort === 'towpilot' ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-purple-300 bg-purple-50 text-purple-700'}
       >
         {billing.cohort === 'towpilot' ? 'TowPilot' : 'Eqho'}
       </Badge>
     </TableCell>
-    <TableCell className="text-right font-mono text-emerald-400">
+    <TableCell className="text-right font-mono text-emerald-600 font-medium">
       {formatCurrency(billing.amount)}
     </TableCell>
-    <TableCell className="text-right text-slate-400 text-sm">
+    <TableCell className="text-right text-gray-500 text-sm">
       {new Date(billing.billing_date).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -188,9 +198,10 @@ const BillingRow = ({ billing }) => (
   </TableRow>
 );
 
-/**
- * Upcoming Billings Table Component
- */
+// ============================================================================
+// Upcoming Billings Table Component
+// ============================================================================
+
 const UpcomingBillingsSection = ({ billings }) => {
   const [activeTab, setActiveTab] = useState('today');
   
@@ -204,15 +215,17 @@ const UpcomingBillingsSection = ({ billings }) => {
   const activeData = tabs.find(t => t.id === activeTab)?.data;
 
   return (
-    <Card className="bg-slate-900 border-slate-800">
+    <Card className="bg-white border border-gray-200 shadow-sm">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg text-white flex items-center gap-2">
-              <CalendarIcon />
+            <CardTitle className="text-lg text-gray-900 flex items-center gap-2">
+              <div className="p-1.5 bg-blue-100 rounded">
+                <CalendarIcon />
+              </div>
               Upcoming Billings
             </CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-gray-500">
               Expected subscription renewals
             </CardDescription>
           </div>
@@ -221,14 +234,14 @@ const UpcomingBillingsSection = ({ billings }) => {
               <div className="text-right text-sm">
                 <div className="flex items-center gap-4">
                   <div>
-                    <span className="text-blue-400">TowPilot:</span>
-                    <span className="ml-2 font-mono text-white">
+                    <span className="text-blue-600 font-medium">TowPilot:</span>
+                    <span className="ml-2 font-mono text-gray-900">
                       {formatCurrency(billings.by_cohort.towpilot?.month || 0)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-purple-400">Eqho:</span>
-                    <span className="ml-2 font-mono text-white">
+                    <span className="text-purple-600 font-medium">Eqho:</span>
+                    <span className="ml-2 font-mono text-gray-900">
                       {formatCurrency(billings.by_cohort.eqho?.month || 0)}
                     </span>
                   </div>
@@ -240,15 +253,15 @@ const UpcomingBillingsSection = ({ billings }) => {
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-slate-800 border border-slate-700">
+          <TabsList className="bg-gray-100 border border-gray-200">
             {tabs.map(tab => (
               <TabsTrigger 
                 key={tab.id} 
                 value={tab.id}
-                className="data-[state=active]:bg-slate-700 data-[state=active]:text-white"
+                className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm"
               >
                 <span>{tab.label}</span>
-                <Badge variant="secondary" className="ml-2 bg-slate-600 text-xs">
+                <Badge variant="secondary" className="ml-2 bg-gray-200 text-gray-700 text-xs">
                   {formatCurrency(tab.data?.amount || 0, { compact: true })}
                 </Badge>
               </TabsTrigger>
@@ -257,14 +270,14 @@ const UpcomingBillingsSection = ({ billings }) => {
           
           {tabs.map(tab => (
             <TabsContent key={tab.id} value={tab.id} className="mt-4">
-              <div className="rounded-lg border border-slate-800 overflow-hidden">
+              <div className="rounded-lg border border-gray-200 overflow-hidden">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-slate-800 hover:bg-transparent">
-                      <TableHead className="text-slate-400">Customer</TableHead>
-                      <TableHead className="text-slate-400">Cohort</TableHead>
-                      <TableHead className="text-slate-400 text-right">Amount</TableHead>
-                      <TableHead className="text-slate-400 text-right">Date</TableHead>
+                    <TableRow className="bg-gray-50 border-gray-200 hover:bg-gray-50">
+                      <TableHead className="text-gray-600 font-semibold">Customer</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Cohort</TableHead>
+                      <TableHead className="text-gray-600 font-semibold text-right">Amount</TableHead>
+                      <TableHead className="text-gray-600 font-semibold text-right">Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -274,7 +287,7 @@ const UpcomingBillingsSection = ({ billings }) => {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-slate-500 py-8">
+                        <TableCell colSpan={4} className="text-center text-gray-500 py-8">
                           No billings scheduled for this period
                         </TableCell>
                       </TableRow>
@@ -282,9 +295,9 @@ const UpcomingBillingsSection = ({ billings }) => {
                   </TableBody>
                 </Table>
               </div>
-              <div className="mt-3 flex items-center justify-between text-sm text-slate-400">
+              <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
                 <span>{activeData?.count || 0} subscriptions</span>
-                <span className="font-mono text-emerald-400">
+                <span className="font-mono text-emerald-600 font-medium">
                   Total: {formatCurrency(activeData?.amount || 0)}
                 </span>
               </div>
@@ -296,55 +309,58 @@ const UpcomingBillingsSection = ({ billings }) => {
   );
 };
 
-/**
- * Balance Details Card
- */
+// ============================================================================
+// Balance Details Card
+// ============================================================================
+
 const BalanceDetailsCard = ({ bankBalances, stripeBalance }) => {
   return (
-    <Card className="bg-slate-900 border-slate-800">
+    <Card className="bg-white border border-gray-200 shadow-sm">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg text-white flex items-center gap-2">
-          <BankIcon />
+        <CardTitle className="text-lg text-gray-900 flex items-center gap-2">
+          <div className="p-1.5 bg-emerald-100 rounded">
+            <BankIcon />
+          </div>
           Balance Details
         </CardTitle>
-        <CardDescription className="text-slate-400">
+        <CardDescription className="text-gray-500">
           Breakdown by account and source
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* QuickBooks Section */}
         <div>
-          <h4 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+          <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
             <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
             QuickBooks
             {!bankBalances?.is_configured && (
-              <Badge variant="outline" className="border-amber-500 text-amber-400 text-xs">
+              <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 text-xs">
                 Not Connected
               </Badge>
             )}
           </h4>
           <div className="space-y-2">
-            <div className="flex items-center justify-between py-2 px-3 bg-slate-800/50 rounded-lg">
-              <span className="text-slate-400 text-sm">Checking</span>
-              <span className="font-mono text-white">
+            <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg border border-gray-100">
+              <span className="text-gray-600 text-sm">Checking</span>
+              <span className="font-mono text-gray-900 font-medium">
                 {formatCurrency(bankBalances?.checking || 0)}
               </span>
             </div>
-            <div className="flex items-center justify-between py-2 px-3 bg-slate-800/50 rounded-lg">
-              <span className="text-slate-400 text-sm">Savings</span>
-              <span className="font-mono text-white">
+            <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg border border-gray-100">
+              <span className="text-gray-600 text-sm">Savings</span>
+              <span className="font-mono text-gray-900 font-medium">
                 {formatCurrency(bankBalances?.savings || 0)}
               </span>
             </div>
-            <div className="flex items-center justify-between py-2 px-3 bg-slate-800/50 rounded-lg">
-              <span className="text-slate-400 text-sm">Accounts Receivable</span>
-              <span className="font-mono text-emerald-400">
+            <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg border border-gray-100">
+              <span className="text-gray-600 text-sm">Accounts Receivable</span>
+              <span className="font-mono text-emerald-600 font-medium">
                 {formatCurrency(bankBalances?.accounts_receivable || 0)}
               </span>
             </div>
-            <div className="flex items-center justify-between py-2 px-3 bg-slate-800/50 rounded-lg">
-              <span className="text-slate-400 text-sm">Accounts Payable</span>
-              <span className="font-mono text-red-400">
+            <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg border border-gray-100">
+              <span className="text-gray-600 text-sm">Accounts Payable</span>
+              <span className="font-mono text-red-600 font-medium">
                 ({formatCurrency(bankBalances?.accounts_payable || 0)})
               </span>
             </div>
@@ -353,20 +369,20 @@ const BalanceDetailsCard = ({ bankBalances, stripeBalance }) => {
 
         {/* Stripe Section */}
         <div>
-          <h4 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+          <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
             <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
             Stripe
           </h4>
           <div className="space-y-2">
-            <div className="flex items-center justify-between py-2 px-3 bg-slate-800/50 rounded-lg">
-              <span className="text-slate-400 text-sm">Available</span>
-              <span className="font-mono text-emerald-400">
+            <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg border border-gray-100">
+              <span className="text-gray-600 text-sm">Available</span>
+              <span className="font-mono text-emerald-600 font-medium">
                 {formatCurrency(stripeBalance?.available || 0)}
               </span>
             </div>
-            <div className="flex items-center justify-between py-2 px-3 bg-slate-800/50 rounded-lg">
-              <span className="text-slate-400 text-sm">Pending</span>
-              <span className="font-mono text-amber-400">
+            <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg border border-gray-100">
+              <span className="text-gray-600 text-sm">Pending</span>
+              <span className="font-mono text-amber-600 font-medium">
                 {formatCurrency(stripeBalance?.pending || 0)}
               </span>
             </div>
@@ -377,9 +393,10 @@ const BalanceDetailsCard = ({ bankBalances, stripeBalance }) => {
   );
 };
 
-/**
- * Main CashFlow Dashboard Component
- */
+// ============================================================================
+// Main CashFlow Dashboard Component
+// ============================================================================
+
 export const CashFlowDashboard = () => {
   const { isAdmin, user } = useAuth();
   const {
@@ -399,16 +416,16 @@ export const CashFlowDashboard = () => {
   // Admin gate
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-        <Card className="bg-slate-900 border-slate-800 max-w-md">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="bg-white border border-gray-200 shadow-sm max-w-md">
           <CardContent className="p-8 text-center">
-            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-white mb-2">Access Denied</h2>
-            <p className="text-slate-400 mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
+            <p className="text-gray-500 mb-4">
               This dashboard is restricted to administrators only.
             </p>
             <Button variant="outline" onClick={() => window.history.back()}>
@@ -423,10 +440,10 @@ export const CashFlowDashboard = () => {
   // Loading state
   if (loading && !data) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-400">Loading cash flow data...</p>
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading cash flow data...</p>
         </div>
       </div>
     );
@@ -435,16 +452,16 @@ export const CashFlowDashboard = () => {
   // Error state
   if (error && !data) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-        <Card className="bg-slate-900 border-slate-800 max-w-md">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="bg-white border border-gray-200 shadow-sm max-w-md">
           <CardContent className="p-8 text-center">
-            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-white mb-2">Error Loading Data</h2>
-            <p className="text-slate-400 mb-4">{error.message}</p>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Data</h2>
+            <p className="text-gray-500 mb-4">{error.message}</p>
             <Button onClick={refresh}>Try Again</Button>
           </CardContent>
         </Card>
@@ -453,35 +470,35 @@ export const CashFlowDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
+      <header className="border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold text-gray-900">
                 Cash Flow Dashboard
               </h1>
-              <p className="text-sm text-slate-400 mt-1">
+              <p className="text-sm text-gray-500 mt-1">
                 Real-time financial overview for {user?.email}
               </p>
             </div>
             <div className="flex items-center gap-4">
               {isCached && (
-                <Badge variant="outline" className="border-amber-500 text-amber-400">
+                <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">
                   Cached Data
                 </Badge>
               )}
               <div className="text-right text-sm">
-                <p className="text-slate-400">Last updated</p>
-                <p className="text-white font-medium">{formatRelativeTime(lastUpdated)}</p>
+                <p className="text-gray-400">Last updated</p>
+                <p className="text-gray-700 font-medium">{formatRelativeTime(lastUpdated)}</p>
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={refresh}
                 disabled={isRefreshing}
-                className="border-slate-700 hover:bg-slate-800"
+                className="border-gray-300 hover:bg-gray-50"
               >
                 <span className={isRefreshing ? 'animate-spin' : ''}>
                   <RefreshIcon />
@@ -492,7 +509,7 @@ export const CashFlowDashboard = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-slate-700 hover:bg-slate-800"
+                  className="border-gray-300 hover:bg-gray-50"
                 >
                   <SettingsIcon />
                   <span className="ml-2">Integrations</span>
@@ -552,12 +569,12 @@ export const CashFlowDashboard = () => {
         </div>
 
         {/* Footer Info */}
-        <div className="mt-8 pt-6 border-t border-slate-800">
-          <div className="flex items-center justify-between text-sm text-slate-500">
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <div className="flex items-center justify-between text-sm text-gray-400">
             <div className="flex items-center gap-4">
               <span>Data sources: QuickBooks, Stripe</span>
               {bankBalances?.is_cached && (
-                <Badge variant="outline" className="border-slate-600 text-slate-400 text-xs">
+                <Badge variant="outline" className="border-gray-300 text-gray-500 text-xs">
                   QB: Cached
                 </Badge>
               )}
@@ -571,4 +588,3 @@ export const CashFlowDashboard = () => {
 };
 
 export default CashFlowDashboard;
-
