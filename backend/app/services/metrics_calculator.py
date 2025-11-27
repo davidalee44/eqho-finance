@@ -1,5 +1,4 @@
 import logging
-from typing import Dict
 
 from app.services.cache_service import cache_service
 from app.services.stripe_service import StripeService
@@ -15,7 +14,7 @@ class MetricsCalculator:
     """Calculate investor metrics from Stripe API (bypassing Supabase)"""
 
     @staticmethod
-    async def calculate_towpilot_metrics() -> Dict:
+    async def calculate_towpilot_metrics() -> dict:
         """Calculate all metrics specific to TowPilot product with caching"""
 
         # Use cache service
@@ -24,9 +23,9 @@ class MetricsCalculator:
         )
 
     @staticmethod
-    async def _compute_towpilot_metrics() -> Dict:
+    async def _compute_towpilot_metrics() -> dict:
         """Internal method to compute metrics from Stripe API
-        
+
         Note: Currently returns ALL products since customer tags are not populated.
         To filter for TowPilot only, add 'tags': 'tow' to customer metadata in Stripe.
         """
@@ -121,7 +120,7 @@ class MetricsCalculator:
         }
 
     @staticmethod
-    async def calculate_all_products_metrics() -> Dict:
+    async def calculate_all_products_metrics() -> dict:
         """Calculate metrics for all products combined with caching"""
 
         # Use cache service
@@ -131,7 +130,7 @@ class MetricsCalculator:
         )
 
     @staticmethod
-    async def _compute_all_products_metrics() -> Dict:
+    async def _compute_all_products_metrics() -> dict:
         """Internal method to compute all products metrics from Stripe API"""
 
         # Get all subscriptions from Stripe

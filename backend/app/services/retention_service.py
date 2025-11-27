@@ -9,7 +9,7 @@ Provides data-driven attrition metrics:
 """
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Optional
 
 import stripe
 
@@ -28,10 +28,10 @@ class RetentionService:
     """Service for calculating retention, churn, and LTV metrics from Stripe data"""
 
     @staticmethod
-    async def get_all_subscriptions_with_lifecycle() -> List[Dict]:
+    async def get_all_subscriptions_with_lifecycle() -> list[dict]:
         """
         Fetch all subscriptions with lifecycle data for cohort analysis.
-        
+
         Returns subscriptions with:
         - created: when subscription started
         - canceled_at: when canceled (if applicable)
@@ -84,13 +84,13 @@ class RetentionService:
         return all_subs
 
     @staticmethod
-    def group_into_cohorts(subscriptions: List[Dict]) -> Dict[str, List[Dict]]:
+    def group_into_cohorts(subscriptions: list[dict]) -> dict[str, list[dict]]:
         """
         Group subscriptions into monthly cohorts by signup date.
-        
+
         Args:
             subscriptions: List of subscriptions with 'created' timestamp
-            
+
         Returns:
             Dict mapping cohort key (YYYY-MM) to list of subscriptions
         """
@@ -108,16 +108,16 @@ class RetentionService:
 
     @staticmethod
     def calculate_cohort_retention(
-        cohort: List[Dict],
+        cohort: list[dict],
         analysis_date: Optional[datetime] = None
-    ) -> Dict:
+    ) -> dict:
         """
         Calculate retention metrics for a single cohort.
-        
+
         Args:
             cohort: List of subscriptions in this cohort
             analysis_date: Date to analyze retention at (defaults to now)
-            
+
         Returns:
             Dict with retention at various intervals
         """
@@ -190,16 +190,16 @@ class RetentionService:
 
     @staticmethod
     async def calculate_early_churn(
-        subscriptions: List[Dict],
+        subscriptions: list[dict],
         early_period_days: int = 60
-    ) -> Dict:
+    ) -> dict:
         """
         Calculate early churn rate (customers lost within first N days).
-        
+
         Args:
             subscriptions: All subscriptions with lifecycle data
             early_period_days: Number of days to consider "early" (default 60)
-            
+
         Returns:
             Dict with early churn metrics
         """
@@ -244,21 +244,21 @@ class RetentionService:
 
     @staticmethod
     async def calculate_steady_state_churn(
-        subscriptions: List[Dict],
+        subscriptions: list[dict],
         early_period_days: int = 60,
         lookback_months: int = 6
-    ) -> Dict:
+    ) -> dict:
         """
         Calculate steady-state monthly churn rate (post-early period).
-        
+
         This measures churn of customers who survived the early period,
         giving a more accurate long-term churn rate.
-        
+
         Args:
             subscriptions: All subscriptions with lifecycle data
             early_period_days: Days to consider "early" (excluded from this calculation)
             lookback_months: Months of data to analyze
-            
+
         Returns:
             Dict with steady-state churn metrics
         """
@@ -331,17 +331,17 @@ class RetentionService:
         arpu_monthly: float,
         gross_margin: float,
         average_lifespan_months: float
-    ) -> Dict:
+    ) -> dict:
         """
         Calculate Customer Lifetime Value from retention-derived inputs.
-        
+
         LTV = ARPU × Gross Margin × Average Lifespan (months)
-        
+
         Args:
             arpu_monthly: Average Revenue Per User (monthly)
             gross_margin: Gross margin percentage (0-1)
             average_lifespan_months: Average customer lifespan in months
-            
+
         Returns:
             Dict with LTV calculation and methodology
         """
@@ -366,21 +366,21 @@ class RetentionService:
         early_period_days: int = 60,
         lookback_months: int = 6,
         gross_margin: Optional[float] = None
-    ) -> Dict:
+    ) -> dict:
         """
         Get comprehensive attrition summary with investor-ready narrative.
-        
+
         This is the main entry point for attrition analysis, providing:
         - Early churn rate
         - Steady-state monthly churn
         - LTV calculation with methodology
         - Clear narrative explanation
-        
+
         Args:
             early_period_days: Days for early churn window (default 60)
             lookback_months: Months of data for steady-state calculation
             gross_margin: Override gross margin (default uses P&L data)
-            
+
         Returns:
             Dict with complete attrition analysis
         """
@@ -432,9 +432,9 @@ class RetentionService:
 
     @staticmethod
     def _generate_narrative(
-        early_churn: Dict,
-        steady_state: Dict,
-        ltv: Dict,
+        early_churn: dict,
+        steady_state: dict,
+        ltv: dict,
         arpu_monthly: float
     ) -> str:
         """
@@ -465,13 +465,13 @@ class RetentionService:
         )
 
     @staticmethod
-    async def get_cohort_retention_data() -> Dict:
+    async def get_cohort_retention_data() -> dict:
         """
         Get detailed cohort retention data for visualization.
-        
+
         Returns retention curves for each monthly cohort, suitable for
         charting survival curves.
-        
+
         Returns:
             Dict with cohort-by-cohort retention data
         """
@@ -528,10 +528,10 @@ class RetentionService:
         }
 
     @staticmethod
-    async def get_ltv_calculation() -> Dict:
+    async def get_ltv_calculation() -> dict:
         """
         Get detailed LTV calculation with full methodology breakdown.
-        
+
         Returns:
             Dict with LTV value and complete calculation steps
         """
