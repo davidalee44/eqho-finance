@@ -112,6 +112,9 @@ async def get_all_connection_status(
     """
     Get status of all integrations.
 
+    This endpoint actively syncs with Pipedream to discover newly connected accounts,
+    stores them in Supabase, and returns the current status of all integrations.
+
     Returns:
     - Pipedream configuration status
     - Connection status for each supported app
@@ -120,16 +123,112 @@ async def get_all_connection_status(
     Admin-only endpoint.
     """
     try:
-        # Get stored connections from Supabase
         supabase = await get_supabase_client()
+        external_user_id = user_id or "eqho-admin"
+
+        # Step 1: Fetch ALL connected accounts from Pipedream (source of truth)
+        # We fetch all accounts in the project because external_user_id may vary
+        pipedream_accounts = []
+        if pipedream_service.is_configured:
+            try:
+                # Fetch all accounts in the project (no external_user_id filter)
+                pipedream_accounts = await pipedream_service.get_accounts_for_user()
+                logger.info(f"Found {len(pipedream_accounts)} accounts from Pipedream")
+            except Exception as e:
+                logger.warning(f"Failed to fetch Pipedream accounts: {e}")
+
+        # Step 2: Sync Pipedream accounts to Supabase
+        logger.info(f"Syncing: supabase={supabase is not None}, pipedream_accounts={len(pipedream_accounts)}")
+        if supabase and pipedream_accounts:
+            now = datetime.now(timezone.utc).isoformat()
+
+            for pd_account in pipedream_accounts:
+                logger.info(f"Processing account: {pd_account.get('id')} - {pd_account.get('name')}")
+                # Extract app name from Pipedream account
+                # Pipedream returns accounts with 'app' as a dict containing 'name_slug'
+                # Example: {"app": {"name_slug": "quickbooks", "name": "QuickBooks"}}
+                app_field = pd_account.get("app", {})
+                if isinstance(app_field, dict):
+                    app_slug = app_field.get("name_slug") or app_field.get("name", "").lower()
+                else:
+                    app_slug = str(app_field) if app_field else pd_account.get("name", "").lower()
+
+                account_id = pd_account.get("id")
+
+                if not app_slug or not account_id:
+                    logger.warning(f"Skipping Pipedream account with missing data: {pd_account}")
+                    continue
+
+                # Normalize app slug to our supported apps
+                normalized_app = _normalize_app_slug(app_slug)
+                if not normalized_app:
+                    logger.debug(f"Skipping unsupported app: {app_slug}")
+                    continue
+
+                # Use the Pipedream external_id as the user identifier
+                # This is a UUID assigned by Pipedream per-account
+                pd_external_id = pd_account.get("external_id")
+                
+                logger.info(f"Syncing Pipedream account: app={normalized_app}, account_id={account_id}, external_id={pd_external_id}")
+                
+                # Check if this connection already exists in Supabase (by account_id)
+                try:
+                    existing = (
+                        supabase.table("pipedream_connections")
+                        .select("id, status, account_id")
+                        .eq("app", normalized_app)
+                        .eq("account_id", account_id)
+                        .limit(1)
+                        .execute()
+                    )
+
+                    if existing.data:
+                        # Update existing record if account_id changed or status needs update
+                        current = existing.data[0]
+                        if current["account_id"] != account_id or current["status"] != "active":
+                            supabase.table("pipedream_connections").update({
+                                "account_id": account_id,
+                                "status": "active",
+                                "updated_at": now,
+                                "metadata": {
+                                    "pipedream_sync": now,
+                                    "app_details": pd_account.get("app_details", {}),
+                                },
+                            }).eq("id", current["id"]).execute()
+                            logger.info(f"Updated connection for {normalized_app}")
+                    else:
+                        # Create new connection record
+                        # Use external_id as user_id if it's a valid UUID, otherwise generate one
+                        user_id_for_db = pd_external_id if pd_external_id else None
+                        
+                        insert_data = {
+                            "account_id": account_id,
+                            "app": normalized_app,
+                            "provider": "pipedream",
+                            "status": "active",
+                            "connected_at": now,
+                            "metadata": {
+                                "pipedream_sync": now,
+                                "pipedream_external_id": pd_external_id,
+                                "app_details": pd_account.get("app_details", {}),
+                            },
+                        }
+                        
+                        # Only include user_id if we have a valid UUID
+                        if user_id_for_db:
+                            insert_data["user_id"] = user_id_for_db
+                        
+                        supabase.table("pipedream_connections").insert(insert_data).execute()
+                        logger.info(f"Created new connection for {normalized_app}")
+
+                except Exception as e:
+                    logger.error(f"Failed to sync connection for {normalized_app}: {e}", exc_info=True)
+
+        # Step 3: Get all connections from Supabase (now including synced ones)
         connections = {}
-
         if supabase:
-            query = supabase.table("pipedream_connections").select("*")
-            if user_id:
-                query = query.eq("user_id", user_id)
-
-            result = query.execute()
+            # Fetch all connections - no user_id filter since we want all team connections
+            result = supabase.table("pipedream_connections").select("*").execute()
 
             for conn in result.data or []:
                 connections[conn["app"]] = {
@@ -139,7 +238,7 @@ async def get_all_connection_status(
                     "metadata": conn.get("metadata", {}),
                 }
 
-        # Build response with all supported apps
+        # Step 4: Build response with all supported apps
         apps_status = []
         for app_id, app_config in pipedream_service.SUPPORTED_APPS.items():
             conn = connections.get(app_id, {})
@@ -151,12 +250,13 @@ async def get_all_connection_status(
                 "status": conn.get("status", "disconnected"),
                 "account_id": conn.get("account_id"),
                 "connected_at": conn.get("connected_at"),
-                "last_sync": conn.get("metadata", {}).get("last_sync"),
+                "last_sync": conn.get("metadata", {}).get("last_sync") or conn.get("metadata", {}).get("pipedream_sync"),
             })
 
         return {
             "pipedream_configured": pipedream_service.is_configured,
             "connections": apps_status,
+            "pipedream_accounts_found": len(pipedream_accounts),
             "timestamp": datetime.now().isoformat(),
         }
 
@@ -166,6 +266,41 @@ async def get_all_connection_status(
             status_code=500,
             detail=f"Error getting connection status: {str(e)}"
         )
+
+
+def _normalize_app_slug(app_slug: str) -> Optional[str]:
+    """
+    Normalize Pipedream app slug to our supported app names.
+
+    Pipedream may return app names like 'quickbooks_sandbox', 'google-sheets', etc.
+    We need to map these to our canonical app IDs.
+    """
+    # Direct matches
+    if app_slug in pipedream_service.SUPPORTED_APPS:
+        return app_slug
+
+    # Common variations
+    slug_mapping = {
+        "quickbooks_sandbox": "quickbooks",
+        "quickbooks_online": "quickbooks",
+        "quickbooks-sandbox": "quickbooks",
+        "quickbooks-online": "quickbooks",
+        "google-sheets": "google_sheets",
+        "googlesheets": "google_sheets",
+        "google_sheet": "google_sheets",
+    }
+
+    normalized = slug_mapping.get(app_slug.lower())
+    if normalized:
+        return normalized
+
+    # Try partial match
+    app_lower = app_slug.lower()
+    for supported_app in pipedream_service.SUPPORTED_APPS:
+        if supported_app in app_lower or app_lower in supported_app:
+            return supported_app
+
+    return None
 
 
 @router.get("/status/{app}")
@@ -288,11 +423,25 @@ async def initiate_connection(
             redirect_uri=request.redirect_uri or "http://localhost:5173/admin/integrations",
         )
 
+        # Build the connect URL - ensure it includes the app parameter
+        # Format: https://pipedream.com/_static/connect.html?token=xxx&connectLink=true&app=quickbooks
+        token = token_data.get("token")
+        connect_url = token_data.get("connect_link_url")
+
+        # If the URL doesn't include the app parameter, add it
+        if connect_url and "&app=" not in connect_url:
+            # Get the app slug from the token_data or use the provided app
+            app_slug = token_data.get("app", app)
+            connect_url = f"{connect_url}&app={app_slug}"
+        elif not connect_url and token:
+            # Construct URL from token if connect_link_url wasn't provided
+            connect_url = f"https://pipedream.com/_static/connect.html?token={token}&connectLink=true&app={app}"
+
         return {
             "success": True,
             "app": app,
-            "connect_url": token_data.get("connect_link_url"),
-            "token": token_data.get("token"),
+            "connect_url": connect_url,
+            "token": token,
             "expires_at": token_data.get("expires_at"),
             "instructions": f"Redirect user to connect_url to complete {app} authorization",
         }

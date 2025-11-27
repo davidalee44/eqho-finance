@@ -113,7 +113,10 @@ class TestMetricsCacheService:
                 "source": "stripe"
             },
         ]
-        mock_supabase_client.table.return_value.select.return_value.order.return_value.execute.return_value.data = mock_data
+        # Mock the full chain: .table().select().order().range().execute()
+        mock_response = MagicMock()
+        mock_response.data = mock_data
+        mock_supabase_client.table.return_value.select.return_value.order.return_value.range.return_value.execute.return_value = mock_response
         MetricsCacheService.client = mock_supabase_client
 
         # Test

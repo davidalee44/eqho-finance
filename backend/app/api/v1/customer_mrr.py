@@ -51,7 +51,7 @@ async def get_customer_mrr_list(
                 continue
 
             interval = item["interval"]
-            interval_count = item.get("interval_count", 1)
+            interval_count = item.get("interval_count", 1) or 1
 
             # Calculate monthly equivalent
             # interval_count handles multi-period billing (e.g., every 3 months, every 2 years)

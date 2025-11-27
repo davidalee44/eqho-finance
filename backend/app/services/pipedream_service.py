@@ -14,7 +14,8 @@ Flow:
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+import os
+from typing import Any, Optional
 
 import httpx
 
@@ -94,9 +95,8 @@ class PipedreamService:
         import time
 
         # Return cached token if still valid (with 2 min buffer)
-        if self._access_token and self._token_expires_at:
-            if time.time() < (self._token_expires_at - 120):
-                return self._access_token
+        if self._access_token and self._token_expires_at and time.time() < (self._token_expires_at - 120):
+            return self._access_token
 
         logger.debug("Fetching new Pipedream OAuth token")
 
@@ -126,7 +126,7 @@ class PipedreamService:
             logger.info("Successfully obtained Pipedream OAuth token")
             return self._access_token
 
-    async def _get_auth_headers(self) -> Dict[str, str]:
+    async def _get_auth_headers(self) -> dict[str, str]:
         """Get authentication headers using OAuth2 client credentials flow."""
         access_token = await self._get_oauth_token()
         return {
@@ -140,7 +140,7 @@ class PipedreamService:
         external_user_id: str,
         app: str,
         redirect_uri: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a connect token for client-side OAuth initialization.
 
@@ -161,8 +161,14 @@ class PipedreamService:
         app_config = self.SUPPORTED_APPS[app]
 
         # Build payload for Pipedream Connect token creation
+        # Include the app slug so Pipedream knows which OAuth flow to initiate
+        # Environment is required - use the configured environment or default to "production"
+        environment = os.getenv("PIPEDREAM_ENVIRONMENT", "production")
+
         payload = {
             "external_user_id": external_user_id,
+            "app": app_config["slug"],  # e.g., "quickbooks", "stripe"
+            "environment": environment,  # Required: "development" or "production"
         }
 
         # Get OAuth headers
@@ -202,7 +208,7 @@ class PipedreamService:
             logger.error(f"Pipedream token creation error: {e}")
             raise
 
-    async def get_account(self, account_id: str) -> Optional[Dict[str, Any]]:
+    async def get_account(self, account_id: str) -> Optional[dict[str, Any]]:
         """
         Get details for a connected account.
 
@@ -233,40 +239,53 @@ class PipedreamService:
 
     async def get_accounts_for_user(
         self,
-        external_user_id: str,
+        external_user_id: Optional[str] = None,
         app: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
-        Get all connected accounts for an external user.
+        Get connected accounts from Pipedream.
 
         Args:
-            external_user_id: Your app's user ID
+            external_user_id: Optional user ID filter (if None, fetches all accounts in project)
             app: Optional app filter
 
         Returns:
             List of connected accounts
         """
         if not self.is_configured:
+            logger.warning("Pipedream not configured, cannot fetch accounts")
             return []
 
-        params = {"external_user_id": external_user_id}
+        # Build query params
+        params = {}
+        if external_user_id:
+            params["external_user_id"] = external_user_id
         if app:
             params["app"] = app
 
         headers = await self._get_auth_headers()
+
+        # Correct endpoint: /v1/connect/{project_id}/accounts
+        url = f"{PIPEDREAM_API_BASE}/connect/{self.project_id}/accounts"
+
+        logger.info(f"Fetching accounts from Pipedream: {url} (filter: {params or 'none'})")
+
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{PIPEDREAM_API_BASE}/connect/accounts",
+                url,
                 headers=headers,
-                params=params,
+                params=params if params else None,
+                timeout=15,
             )
 
             if response.status_code != 200:
-                logger.error(f"Failed to get accounts: {response.status_code}")
+                logger.error(f"Failed to get accounts: {response.status_code} - {response.text}")
                 return []
 
             data = response.json()
-            return data.get("data", [])
+            accounts = data.get("data", data.get("accounts", []))
+            logger.info(f"Found {len(accounts)} connected accounts in Pipedream")
+            return accounts
 
     async def delete_account(self, account_id: str) -> bool:
         """
@@ -295,7 +314,7 @@ class PipedreamService:
             logger.error(f"Failed to delete account: {response.status_code}")
             return False
 
-    async def get_account_credentials(self, account_id: str) -> Optional[Dict[str, Any]]:
+    async def get_account_credentials(self, account_id: str) -> Optional[dict[str, Any]]:
         """
         Get OAuth credentials for an account (for direct API calls).
 
@@ -326,9 +345,9 @@ class PipedreamService:
         account_id: str,
         method: str,
         url: str,
-        data: Optional[Dict] = None,
-        params: Optional[Dict] = None,
-    ) -> Dict[str, Any]:
+        data: Optional[dict] = None,
+        params: Optional[dict] = None,
+    ) -> dict[str, Any]:
         """
         Make an authenticated API request through Pipedream's proxy.
 
@@ -368,7 +387,7 @@ class PipedreamService:
 
             return response.json()
 
-    async def test_connection(self, account_id: str, app: str) -> Dict[str, Any]:
+    async def test_connection(self, account_id: str, app: str) -> dict[str, Any]:
         """
         Test if a connection is working by making a simple API call.
 
@@ -423,7 +442,7 @@ class PipedreamService:
                 "message": str(e),
             }
 
-    def get_supported_apps(self) -> List[Dict[str, Any]]:
+    def get_supported_apps(self) -> list[dict[str, Any]]:
         """Get list of supported integrations with metadata"""
         return [
             {

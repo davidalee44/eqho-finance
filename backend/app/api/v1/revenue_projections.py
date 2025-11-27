@@ -54,7 +54,7 @@ async def get_current_month_projections():
                 continue
 
             interval = item["interval"]
-            interval_count = item.get("interval_count", 1)
+            interval_count = item.get("interval_count", 1) or 1
 
             # Calculate monthly MRR
             # interval_count handles multi-period billing (e.g., every 3 months, every 2 years)
@@ -193,7 +193,7 @@ async def get_month_detail(
                 continue
 
             interval = item["interval"]
-            interval_count = item.get("interval_count", 1)
+            interval_count = item.get("interval_count", 1) or 1
 
             # Calculate MRR
             # interval_count handles multi-period billing (e.g., every 3 months, every 2 years)
@@ -304,7 +304,7 @@ async def get_quarterly_revenue_forecast(
                             continue
 
                         interval = item["interval"]
-                        interval_count = item.get("interval_count", 1)
+                        interval_count = item.get("interval_count", 1) or 1
 
                         # interval_count handles multi-period billing
                         if interval == "year":
@@ -392,7 +392,7 @@ async def get_annual_revenue_forecast():
                         continue
 
                     interval = item["interval"]
-                    interval_count = item.get("interval_count", 1)
+                    interval_count = item.get("interval_count", 1) or 1
 
                     # interval_count handles multi-period billing
                     if interval == "year":
