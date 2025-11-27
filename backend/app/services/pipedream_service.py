@@ -70,8 +70,8 @@ class PipedreamService:
 
     def __init__(self):
         self.project_id = settings.PIPEDREAM_PROJECT_ID
-        self.client_id = getattr(settings, 'PIPEDREAM_CLIENT_ID', '')
-        self.client_secret = getattr(settings, 'PIPEDREAM_CLIENT_SECRET', '')
+        self.client_id = getattr(settings, "PIPEDREAM_CLIENT_ID", "")
+        self.client_secret = getattr(settings, "PIPEDREAM_CLIENT_SECRET", "")
         self.environment = settings.PIPEDREAM_ENVIRONMENT
         self.webhook_secret = settings.PIPEDREAM_WEBHOOK_SECRET
 
@@ -87,7 +87,7 @@ class PipedreamService:
     async def _get_oauth_token(self) -> str:
         """
         Get OAuth access token using client credentials flow.
-        
+
         Pipedream requires exchanging client_id + client_secret for an access token,
         then using that token as Bearer auth for all API calls.
         """
