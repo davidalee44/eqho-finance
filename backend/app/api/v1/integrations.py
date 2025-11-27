@@ -8,6 +8,7 @@ Security: All endpoints require admin role verification.
 """
 
 import logging
+import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -198,8 +199,16 @@ async def get_all_connection_status(
                             logger.info(f"Updated connection for {normalized_app}")
                     else:
                         # Create new connection record
-                        # Use external_id as user_id if it's a valid UUID, otherwise generate one
-                        user_id_for_db = pd_external_id if pd_external_id else None
+                        # Check if external_id is a valid UUID before using it as user_id
+                        user_id_for_db = None
+                        if pd_external_id:
+                            try:
+                                # Validate it's a proper UUID
+                                uuid.UUID(pd_external_id)
+                                user_id_for_db = pd_external_id
+                            except (ValueError, TypeError):
+                                # Not a valid UUID, skip setting user_id
+                                logger.debug(f"external_id '{pd_external_id}' is not a valid UUID, skipping user_id")
                         
                         insert_data = {
                             "account_id": account_id,
@@ -224,19 +233,45 @@ async def get_all_connection_status(
                 except Exception as e:
                     logger.error(f"Failed to sync connection for {normalized_app}: {e}", exc_info=True)
 
-        # Step 3: Get all connections from Supabase (now including synced ones)
+        # Step 3: Build connections dict from Pipedream accounts (source of truth)
+        # Even if Supabase sync fails, we can still show connection status from Pipedream
         connections = {}
-        if supabase:
-            # Fetch all connections - no user_id filter since we want all team connections
-            result = supabase.table("pipedream_connections").select("*").execute()
-
-            for conn in result.data or []:
-                connections[conn["app"]] = {
-                    "status": conn["status"],
-                    "account_id": conn["account_id"],
-                    "connected_at": conn["connected_at"],
-                    "metadata": conn.get("metadata", {}),
+        
+        # First, add all Pipedream accounts to connections
+        for pd_account in pipedream_accounts:
+            app_field = pd_account.get("app", {})
+            if isinstance(app_field, dict):
+                app_slug = app_field.get("name_slug") or app_field.get("name", "").lower()
+            else:
+                app_slug = str(app_field) if app_field else ""
+            
+            normalized_app = _normalize_app_slug(app_slug) if app_slug else None
+            if normalized_app:
+                connections[normalized_app] = {
+                    "status": "active" if pd_account.get("healthy", True) else "error",
+                    "account_id": pd_account.get("id"),
+                    "connected_at": pd_account.get("created_at"),
+                    "metadata": {
+                        "pipedream_sync": pd_account.get("updated_at"),
+                        "healthy": pd_account.get("healthy"),
+                    },
                 }
+        
+        # Then, try to merge with Supabase data (if available)
+        if supabase:
+            try:
+                result = supabase.table("pipedream_connections").select("*").execute()
+                for conn in result.data or []:
+                    app_key = conn["app"]
+                    if app_key not in connections:
+                        connections[app_key] = {
+                            "status": conn["status"],
+                            "account_id": conn["account_id"],
+                            "connected_at": conn["connected_at"],
+                            "metadata": conn.get("metadata", {}),
+                        }
+            except Exception as e:
+                logger.warning(f"Could not fetch from Supabase: {e}")
 
         # Step 4: Build response with all supported apps
         apps_status = []
