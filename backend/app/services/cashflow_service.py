@@ -1,7 +1,7 @@
 """
 CashFlow Service
 
-Aggregates financial data from QuickBooks (bank balances) and Stripe 
+Aggregates financial data from QuickBooks (bank balances) and Stripe
 (account balance, upcoming billings) to provide a comprehensive cash flow view.
 
 This service is the backbone of the admin CashFlow Dashboard.
@@ -9,7 +9,7 @@ This service is the backbone of the admin CashFlow Dashboard.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
 from app.services.metrics_cache_service import MetricsCacheService
 from app.services.quickbooks_service import quickbooks_service
@@ -24,7 +24,7 @@ CASHFLOW_CACHE_TTL = 300
 class CashFlowService:
     """
     Service for aggregating cash flow data from multiple sources.
-    
+
     Combines:
     - QuickBooks bank account balances
     - Stripe account balance (available + pending)
@@ -32,10 +32,10 @@ class CashFlowService:
     """
 
     @staticmethod
-    async def get_bank_balances() -> Dict[str, Any]:
+    async def get_bank_balances() -> dict[str, Any]:
         """
         Get bank account balances from QuickBooks.
-        
+
         Returns cached data if QuickBooks is not configured or on error.
         """
         try:
@@ -80,7 +80,7 @@ class CashFlowService:
             }
 
     @staticmethod
-    async def get_stripe_balance() -> Dict[str, Any]:
+    async def get_stripe_balance() -> dict[str, Any]:
         """
         Get Stripe account balance.
         """
@@ -99,7 +99,7 @@ class CashFlowService:
             }
 
     @staticmethod
-    async def get_upcoming_billings() -> Dict[str, Any]:
+    async def get_upcoming_billings() -> dict[str, Any]:
         """
         Get upcoming billings from Stripe subscriptions.
         """
@@ -118,10 +118,10 @@ class CashFlowService:
             }
 
     @staticmethod
-    async def get_cashflow_summary() -> Dict[str, Any]:
+    async def get_cashflow_summary() -> dict[str, Any]:
         """
         Get comprehensive cash flow summary combining all sources.
-        
+
         Returns:
             Dict with:
             - bank_balances: QuickBooks bank account data
@@ -223,7 +223,7 @@ class CashFlowService:
     def _estimate_runway(cash_on_hand: float, monthly_revenue: float) -> int:
         """
         Estimate cash runway in days based on current cash and expected revenue.
-        
+
         This is a simplified calculation. For accurate runway, you'd need:
         - Historical burn rate
         - Monthly operating expenses
@@ -248,10 +248,10 @@ class CashFlowService:
         return int(runway_months * 30)
 
     @staticmethod
-    async def get_recent_activity() -> Dict[str, Any]:
+    async def get_recent_activity() -> dict[str, Any]:
         """
         Get recent financial activity for the dashboard feed.
-        
+
         Returns:
             Dict with recent payouts, charges, and invoice activity
         """
@@ -274,15 +274,15 @@ class CashFlowService:
             }
 
     @staticmethod
-    async def get_billing_forecast(days: int = 90) -> Dict[str, Any]:
+    async def get_billing_forecast(days: int = 90) -> dict[str, Any]:
         """
         Get billing forecast for the next N days.
-        
+
         Useful for cash flow projections and investor reporting.
-        
+
         Args:
             days: Number of days to forecast
-            
+
         Returns:
             Dict with daily/weekly/monthly billing projections
         """

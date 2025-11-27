@@ -277,7 +277,6 @@ async def get_quarterly_revenue_forecast(
         quarter_year = now.year + (quarter_start_month - 1) // 12
         quarter_start_month = ((quarter_start_month - 1) % 12) + 1
 
-        quarter_invoices = []
         quarter_total = 0.0
         quarter_mrr = 0.0
 

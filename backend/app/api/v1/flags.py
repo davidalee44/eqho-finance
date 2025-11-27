@@ -12,7 +12,7 @@ The endpoint caches flags in memory to reduce latency.
 import os
 import time
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter
 
@@ -34,7 +34,7 @@ DEFAULT_FLAGS = {
 }
 
 # In-memory cache for flags
-_flags_cache: Dict[str, Any] = {
+_flags_cache: dict[str, Any] = {
     "flags": None,
     "timestamp": 0,
 }
@@ -43,7 +43,7 @@ _flags_cache: Dict[str, Any] = {
 FLAGS_CACHE_TTL = 300
 
 
-def get_flags_from_env() -> Dict[str, Any]:
+def get_flags_from_env() -> dict[str, Any]:
     """
     Read flag overrides from environment variables.
     Environment variables take precedence over defaults.
@@ -64,7 +64,7 @@ def get_flags_from_env() -> Dict[str, Any]:
     return flags
 
 
-async def fetch_edge_config_flags() -> Optional[Dict[str, Any]]:
+async def fetch_edge_config_flags() -> Optional[dict[str, Any]]:
     """
     Fetch flags from Vercel Edge Config.
 
@@ -92,7 +92,7 @@ async def fetch_edge_config_flags() -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_cached_flags() -> Optional[Dict[str, Any]]:
+def get_cached_flags() -> Optional[dict[str, Any]]:
     """Get flags from cache if not expired."""
     if _flags_cache["flags"] is None:
         return None
@@ -104,7 +104,7 @@ def get_cached_flags() -> Optional[Dict[str, Any]]:
     return _flags_cache["flags"]
 
 
-def cache_flags(flags: Dict[str, Any]) -> None:
+def cache_flags(flags: dict[str, Any]) -> None:
     """Cache flags in memory."""
     _flags_cache["flags"] = flags
     _flags_cache["timestamp"] = time.time()

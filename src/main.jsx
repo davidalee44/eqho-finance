@@ -201,7 +201,7 @@ function AuthWrapper() {
                     onClick={() => setAuthView('sign_up')}
                     className="text-blue-400 hover:text-blue-300 text-sm"
                   >
-                    Don't have an account? Sign up
+                    Don&apos;t have an account? Sign up
                   </button>
                 </>
               ) : authView === 'sign_up' ? (

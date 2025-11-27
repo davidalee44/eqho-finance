@@ -23,7 +23,7 @@ Pipedream Connect Flow:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 from urllib.parse import urlencode
 
 import httpx
@@ -45,7 +45,7 @@ QB_SANDBOX_API_BASE_URL = "https://sandbox-quickbooks.api.intuit.com/v3/company"
 class QuickBooksService:
     """
     Service for QuickBooks Online API integration.
-    
+
     Handles:
     - OAuth 2.0 authentication flow (direct or via Pipedream)
     - Token storage and refresh
@@ -82,10 +82,10 @@ class QuickBooksService:
         """Check if Pipedream Connect is configured"""
         return bool(settings.PIPEDREAM_PROJECT_ID and settings.PIPEDREAM_CLIENT_SECRET)
 
-    async def _get_pipedream_connection(self) -> Optional[Dict[str, Any]]:
+    async def _get_pipedream_connection(self) -> Optional[dict[str, Any]]:
         """
         Get QuickBooks connection from Pipedream via Supabase.
-        
+
         Returns:
             Connection dict if found and active, None otherwise
         """
@@ -120,7 +120,7 @@ class QuickBooksService:
     async def _get_tokens_from_pipedream(self) -> bool:
         """
         Fetch OAuth tokens from Pipedream Connect.
-        
+
         Returns:
             True if tokens were successfully fetched
         """
@@ -182,10 +182,10 @@ class QuickBooksService:
     def get_authorization_url(self, state: str = None) -> str:
         """
         Generate the OAuth authorization URL for user to authorize QuickBooks access.
-        
+
         Args:
             state: Optional state parameter for CSRF protection
-            
+
         Returns:
             URL to redirect user to for authorization
         """
@@ -202,13 +202,13 @@ class QuickBooksService:
 
         return f"{QB_OAUTH_BASE_URL}?{urlencode(params)}"
 
-    async def exchange_code_for_tokens(self, code: str) -> Dict[str, Any]:
+    async def exchange_code_for_tokens(self, code: str) -> dict[str, Any]:
         """
         Exchange authorization code for access and refresh tokens.
-        
+
         Args:
             code: Authorization code from QuickBooks OAuth callback
-            
+
         Returns:
             Dict with access_token, refresh_token, and expires_in
         """
@@ -244,10 +244,10 @@ class QuickBooksService:
             logger.info("✅ QuickBooks tokens obtained successfully")
             return data
 
-    async def refresh_access_token(self) -> Dict[str, Any]:
+    async def refresh_access_token(self) -> dict[str, Any]:
         """
         Refresh the access token using the refresh token.
-        
+
         Returns:
             Dict with new access_token, refresh_token, and expires_in
         """
@@ -285,7 +285,7 @@ class QuickBooksService:
             logger.info("✅ QuickBooks tokens refreshed successfully")
             return data
 
-    async def _store_tokens(self, token_data: Dict[str, Any]) -> None:
+    async def _store_tokens(self, token_data: dict[str, Any]) -> None:
         """Store tokens in metrics_cache table"""
         await MetricsCacheService.save_metrics(
             metric_type="quickbooks_tokens",
@@ -302,18 +302,17 @@ class QuickBooksService:
     async def _load_tokens(self) -> bool:
         """
         Load tokens from available sources.
-        
+
         Priority:
         1. Pipedream Connect (if configured and connected)
         2. Direct OAuth tokens from cache
-        
+
         Returns:
             True if tokens were loaded successfully
         """
         # Try Pipedream first (preferred method)
-        if self.pipedream_configured:
-            if await self._get_tokens_from_pipedream():
-                return True
+        if self.pipedream_configured and await self._get_tokens_from_pipedream():
+            return True
 
         # Fall back to cached direct OAuth tokens
         cached = await MetricsCacheService.get_latest_metrics("quickbooks_tokens")
@@ -334,13 +333,13 @@ class QuickBooksService:
     async def _ensure_valid_token(self) -> str:
         """
         Ensure we have a valid access token, refreshing if necessary.
-        
+
         For Pipedream connections, tokens are refreshed by Pipedream automatically.
         For direct OAuth, we handle refresh ourselves.
-        
+
         Returns:
             Valid access token
-            
+
         Raises:
             Exception if no tokens available
         """
@@ -368,16 +367,16 @@ class QuickBooksService:
         self,
         method: str,
         endpoint: str,
-        params: Dict[str, Any] = None,
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] = None,
+    ) -> dict[str, Any]:
         """
         Make an authenticated API request to QuickBooks.
-        
+
         Args:
             method: HTTP method (GET, POST, etc.)
             endpoint: API endpoint (after /company/{realm_id})
             params: Query parameters
-            
+
         Returns:
             JSON response data
         """
@@ -428,15 +427,15 @@ class QuickBooksService:
         start_date: str = None,
         end_date: str = None,
         accounting_method: str = "Accrual",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Fetch Profit & Loss report from QuickBooks.
-        
+
         Args:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format
             accounting_method: 'Accrual' or 'Cash'
-            
+
         Returns:
             P&L report data
         """
@@ -463,10 +462,10 @@ class QuickBooksService:
 
         return data
 
-    async def get_profit_and_loss_ytd(self) -> Dict[str, Any]:
+    async def get_profit_and_loss_ytd(self) -> dict[str, Any]:
         """
         Get Year-to-Date Profit & Loss summary.
-        
+
         Returns:
             Summarized P&L with key metrics
         """
@@ -485,13 +484,13 @@ class QuickBooksService:
             "timestamp": datetime.now().isoformat(),
         }
 
-    def _parse_pl_report(self, pl_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _parse_pl_report(self, pl_data: dict[str, Any]) -> dict[str, Any]:
         """
         Parse QuickBooks P&L report into a summary format.
-        
+
         Args:
             pl_data: Raw P&L report from QuickBooks API
-            
+
         Returns:
             Summarized P&L data
         """
@@ -559,17 +558,17 @@ class QuickBooksService:
         self,
         start_date: str = None,
         end_date: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get payroll/labor cost summary.
-        
+
         Note: QuickBooks Online doesn't have a direct payroll API.
         We estimate labor from expense categories.
-        
+
         Args:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format
-            
+
         Returns:
             Payroll summary data
         """
@@ -593,12 +592,12 @@ class QuickBooksService:
             "timestamp": datetime.now().isoformat(),
         }
 
-    async def get_account_balances(self) -> Dict[str, Any]:
+    async def get_account_balances(self) -> dict[str, Any]:
         """
         Fetch all bank and cash account balances from QuickBooks.
-        
+
         Queries the Account endpoint for Bank and Other Current Asset accounts.
-        
+
         Returns:
             Dict with accounts list and total balance
         """
@@ -663,10 +662,10 @@ class QuickBooksService:
                 }
             raise
 
-    async def get_bank_accounts_summary(self) -> Dict[str, Any]:
+    async def get_bank_accounts_summary(self) -> dict[str, Any]:
         """
         Get a summary of bank account balances grouped by type.
-        
+
         Returns:
             Dict with checking, savings, and other account totals
         """
@@ -713,10 +712,10 @@ class QuickBooksService:
             'timestamp': datetime.now().isoformat(),
         }
 
-    async def get_accounts_receivable(self) -> Dict[str, Any]:
+    async def get_accounts_receivable(self) -> dict[str, Any]:
         """
         Get accounts receivable summary (money owed to the company).
-        
+
         Returns:
             Dict with AR balance and aging if available
         """
@@ -755,10 +754,10 @@ class QuickBooksService:
                 'timestamp': datetime.now().isoformat(),
             }
 
-    async def get_accounts_payable(self) -> Dict[str, Any]:
+    async def get_accounts_payable(self) -> dict[str, Any]:
         """
         Get accounts payable summary (money the company owes).
-        
+
         Returns:
             Dict with AP balance
         """
@@ -797,10 +796,10 @@ class QuickBooksService:
                 'timestamp': datetime.now().isoformat(),
             }
 
-    async def get_cash_position(self) -> Dict[str, Any]:
+    async def get_cash_position(self) -> dict[str, Any]:
         """
         Get comprehensive cash position including bank balances, AR, and AP.
-        
+
         Returns:
             Dict with complete cash position summary
         """

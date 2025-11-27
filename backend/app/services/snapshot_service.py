@@ -3,7 +3,7 @@ Snapshot Service for Version Control
 Handles saving, retrieving, and managing report snapshots
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from app.services.supabase_service import SupabaseService
 
@@ -19,11 +19,11 @@ class SnapshotService:
         user_id: str,
         snapshot_type: str,
         snapshot_name: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         description: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
         screenshot_url: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a new snapshot
 
@@ -78,7 +78,7 @@ class SnapshotService:
         user_id: str,
         snapshot_type: Optional[str] = None,
         limit: int = 50,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get snapshots for a user
 
@@ -116,7 +116,7 @@ class SnapshotService:
             return []
 
     @classmethod
-    def get_snapshot(cls, snapshot_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    def get_snapshot(cls, snapshot_id: str, user_id: str) -> Optional[dict[str, Any]]:
         """
         Get a specific snapshot by ID
 
@@ -154,8 +154,8 @@ class SnapshotService:
         cls,
         snapshot_id: str,
         user_id: str,
-        updates: Dict[str, Any],
-    ) -> Optional[Dict[str, Any]]:
+        updates: dict[str, Any],
+    ) -> Optional[dict[str, Any]]:
         """
         Update a snapshot
 
@@ -236,7 +236,7 @@ class SnapshotService:
                     logger.warning(f"Failed to delete screenshot: {e}")
 
             # Delete snapshot record
-            response = (
+            (
                 SupabaseService.client.table("report_snapshots")
                 .delete()
                 .eq("id", snapshot_id)
@@ -252,7 +252,7 @@ class SnapshotService:
             return False
 
     @classmethod
-    def get_snapshot_stats(cls, user_id: str) -> Dict[str, Any]:
+    def get_snapshot_stats(cls, user_id: str) -> dict[str, Any]:
         """
         Get statistics about user's snapshots
 

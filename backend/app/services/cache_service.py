@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ class InMemoryCache:
         Args:
             default_ttl: Default time-to-live in seconds (5 minutes)
         """
-        self._cache: Dict[str, Dict[str, Any]] = {}
+        self._cache: dict[str, dict[str, Any]] = {}
         self._default_ttl = default_ttl
         self._lock = asyncio.Lock()
 
@@ -118,7 +118,7 @@ class InMemoryCache:
 
         return value
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics"""
         return {
             "entries": len(self._cache),
@@ -134,7 +134,7 @@ class CacheService:
 
         self.memory_cache = InMemoryCache(default_ttl=settings.CACHE_TTL)
 
-    async def get_metrics(self, product: str, calculator: Callable) -> Dict[str, Any]:
+    async def get_metrics(self, product: str, calculator: Callable) -> dict[str, Any]:
         """
         Get metrics with in-memory caching
 
@@ -178,7 +178,7 @@ class CacheService:
         await self.memory_cache.clear()
         logger.info("🗑️  All caches cleared")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics"""
         return {
             "memory_cache": self.memory_cache.get_stats(),

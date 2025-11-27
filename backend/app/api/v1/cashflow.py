@@ -23,10 +23,10 @@ router = APIRouter()
 async def verify_admin(request: Request) -> bool:
     """
     Verify that the request is from an admin user.
-    
+
     Checks the Authorization header for a valid JWT with admin role.
     For now, we'll check a simple header or rely on frontend protection.
-    
+
     In production, this should validate the JWT and check the role claim.
     """
     # Check for admin header (set by frontend after auth)
@@ -51,14 +51,14 @@ async def get_cashflow_summary(
 ):
     """
     Get comprehensive cash flow summary.
-    
+
     Returns:
     - Bank balances from QuickBooks
     - Stripe balance (available + pending)
     - Upcoming billings (today, tomorrow, week, month)
     - Total cash position and working capital
     - By-cohort breakdown (TowPilot vs Eqho)
-    
+
     Admin-only endpoint.
     """
     try:
@@ -98,13 +98,13 @@ async def get_bank_balances(
 ):
     """
     Get bank account balances from QuickBooks.
-    
+
     Returns:
     - Cash on hand (checking + savings)
     - Accounts receivable
     - Accounts payable
     - Individual account details
-    
+
     Admin-only endpoint.
     """
     try:
@@ -124,13 +124,13 @@ async def get_stripe_balance(
 ):
     """
     Get Stripe account balance.
-    
+
     Returns:
     - Available balance (ready to payout)
     - Pending balance (processing)
     - Total balance
     - Breakdown by currency
-    
+
     Admin-only endpoint.
     """
     try:
@@ -151,14 +151,14 @@ async def get_upcoming_billings(
 ):
     """
     Get upcoming subscription billings.
-    
+
     Returns:
     - Today's expected billings
     - Tomorrow's expected billings
     - This week's expected billings
     - This month's expected billings
     - Breakdown by cohort (TowPilot, Eqho)
-    
+
     Admin-only endpoint.
     """
     try:
@@ -179,11 +179,11 @@ async def get_recent_activity(
 ):
     """
     Get recent financial activity.
-    
+
     Returns:
     - Recent payouts to bank
     - Pending charges
-    
+
     Admin-only endpoint.
     """
     try:
@@ -204,12 +204,12 @@ async def get_billing_forecast(
 ):
     """
     Get billing forecast for cash flow projections.
-    
+
     Returns:
     - 30/60/90 day revenue projections
     - By-cohort breakdown
     - Monthly recurring revenue
-    
+
     Admin-only endpoint.
     """
     try:
@@ -227,12 +227,12 @@ async def get_billing_forecast(
 async def get_cashflow_status():
     """
     Get status of cash flow data sources.
-    
+
     Returns connection status for:
     - QuickBooks
     - Stripe
     - Cache freshness
-    
+
     This endpoint is not admin-protected for health checking.
     """
     from app.core.config import settings

@@ -298,10 +298,10 @@ async def get_comprehensive_metrics():
 async def get_cached_metrics(metric_type: str):
     """
     Get cached metrics from database when live API is unavailable.
-    
+
     Args:
         metric_type: Type of metrics to retrieve (e.g., 'comprehensive_metrics', 'churn_arpu', 'mrr')
-    
+
     Returns:
         Cached metrics with timestamp showing when data was last fetched
     """
@@ -333,7 +333,7 @@ async def get_cached_metrics(metric_type: str):
 async def get_all_cached_metrics():
     """
     Get all cached metrics from database.
-    
+
     Returns:
         Dict mapping metric_type to cached data with timestamps
     """

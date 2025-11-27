@@ -1,7 +1,7 @@
 """
 API endpoints for snapshot/version control functionality
 """
-from typing import Dict, List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
@@ -17,9 +17,9 @@ class CreateSnapshotRequest(BaseModel):
     user_id: str
     snapshot_type: str  # 'financial_report', 'metrics', 'custom'
     snapshot_name: str
-    data: Dict
+    data: dict
     description: Optional[str] = None
-    metadata: Optional[Dict] = None
+    metadata: Optional[dict] = None
     screenshot_url: Optional[str] = None
 
 
@@ -28,12 +28,12 @@ class UpdateSnapshotRequest(BaseModel):
 
     snapshot_name: Optional[str] = None
     description: Optional[str] = None
-    data: Optional[Dict] = None
-    metadata: Optional[Dict] = None
+    data: Optional[dict] = None
+    metadata: Optional[dict] = None
     screenshot_url: Optional[str] = None
 
 
-@router.post("/", response_model=Dict)
+@router.post("/", response_model=dict)
 async def create_snapshot(request: CreateSnapshotRequest):
     """
     Create a new snapshot for version control
@@ -57,7 +57,7 @@ async def create_snapshot(request: CreateSnapshotRequest):
         )
 
 
-@router.get("/", response_model=List[Dict])
+@router.get("/", response_model=list[dict])
 async def get_snapshots(
     user_id: str = Query(..., description="User ID"),
     snapshot_type: Optional[str] = Query(None, description="Filter by snapshot type"),
@@ -79,7 +79,7 @@ async def get_snapshots(
         )
 
 
-@router.get("/{snapshot_id}", response_model=Dict)
+@router.get("/{snapshot_id}", response_model=dict)
 async def get_snapshot(
     snapshot_id: str,
     user_id: str = Query(..., description="User ID for security check"),
@@ -100,7 +100,7 @@ async def get_snapshot(
         )
 
 
-@router.patch("/{snapshot_id}", response_model=Dict)
+@router.patch("/{snapshot_id}", response_model=dict)
 async def update_snapshot(
     snapshot_id: str,
     request: UpdateSnapshotRequest,
@@ -148,7 +148,7 @@ async def delete_snapshot(
         )
 
 
-@router.get("/stats/summary", response_model=Dict)
+@router.get("/stats/summary", response_model=dict)
 async def get_snapshot_stats(
     user_id: str = Query(..., description="User ID"),
 ):

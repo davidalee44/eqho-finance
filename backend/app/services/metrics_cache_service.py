@@ -8,7 +8,7 @@ for displaying data freshness to users.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from supabase import Client
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class MetricsCacheService:
     """
     Database-backed caching service for API metrics.
-    
+
     Stores metrics in Supabase metrics_cache table with timestamps.
     Used as fallback when live APIs (Stripe, QuickBooks) are unavailable.
     """
@@ -52,17 +52,17 @@ class MetricsCacheService:
     async def save_metrics(
         cls,
         metric_type: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         source: str = "stripe"
     ) -> bool:
         """
         Save metrics to database cache.
-        
+
         Args:
             metric_type: Type of metric (e.g., 'stripe_mrr', 'stripe_customers')
             data: The metric data to cache
             source: Data source ('stripe', 'quickbooks', 'manual')
-            
+
         Returns:
             True if saved successfully, False otherwise
         """
@@ -94,13 +94,13 @@ class MetricsCacheService:
     async def get_latest_metrics(
         cls,
         metric_type: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[dict[str, Any]]:
         """
         Get the most recent cached metrics for a given type.
-        
+
         Args:
             metric_type: Type of metric to retrieve
-            
+
         Returns:
             Dict with 'data', 'fetched_at', and 'source' or None if not found
         """
@@ -137,11 +137,11 @@ class MetricsCacheService:
             return None
 
     @classmethod
-    async def get_all_latest_metrics(cls) -> Dict[str, Any]:
+    async def get_all_latest_metrics(cls) -> dict[str, Any]:
         """
         Get the latest cached metrics for all types.
         Uses pagination to ensure all data is retrieved.
-        
+
         Returns:
             Dict mapping metric_type to cached data
         """
@@ -206,10 +206,10 @@ class MetricsCacheService:
     async def cleanup_old_entries(cls, keep_latest: int = 10) -> int:
         """
         Remove old cache entries, keeping only the N most recent per type.
-        
+
         Args:
             keep_latest: Number of entries to keep per metric type
-            
+
         Returns:
             Number of entries deleted
         """
@@ -230,7 +230,7 @@ class MetricsCacheService:
                 return 0
 
             # Find entries to delete
-            entries_by_type: Dict[str, List[str]] = {}
+            entries_by_type: dict[str, list[str]] = {}
             for entry in response.data:
                 mt = entry["metric_type"]
                 if mt not in entries_by_type:
@@ -239,7 +239,7 @@ class MetricsCacheService:
 
             # Collect IDs to delete (all but the first N for each type)
             ids_to_delete = []
-            for mt, ids in entries_by_type.items():
+            for ids in entries_by_type.values():
                 if len(ids) > keep_latest:
                     ids_to_delete.extend(ids[keep_latest:])
 

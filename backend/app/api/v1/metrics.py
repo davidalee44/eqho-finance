@@ -1,4 +1,3 @@
-from typing import Dict
 
 from fastapi import APIRouter, HTTPException
 
@@ -7,7 +6,7 @@ from app.services.metrics_calculator import MetricsCalculator
 router = APIRouter()
 
 
-@router.get("/towpilot", response_model=Dict)
+@router.get("/towpilot", response_model=dict)
 async def get_towpilot_metrics():
     """
     Get all metrics specific to TowPilot product
@@ -29,7 +28,7 @@ async def get_towpilot_metrics():
         )
 
 
-@router.get("/all-products", response_model=Dict)
+@router.get("/all-products", response_model=dict)
 async def get_all_products_metrics():
     """
     Get metrics for all products combined

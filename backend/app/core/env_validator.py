@@ -57,11 +57,11 @@ BACKEND_ENV_VARS = [
 def validate_env(raise_on_error: bool = True, verbose: bool = False) -> dict:
     """
     Validate environment variables.
-    
+
     Args:
         raise_on_error: If True, raise exception on missing required vars
         verbose: If True, print status of all vars
-        
+
     Returns:
         Dict with validation results:
         {

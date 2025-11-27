@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -30,7 +30,7 @@ class RevenueMetrics(BaseModel):
     mrr: float
     arr: float
     growth_rate: float
-    monthly_data: List[dict]
+    monthly_data: list[dict]
 
 
 class ChurnMetrics(BaseModel):
@@ -41,7 +41,7 @@ class ChurnMetrics(BaseModel):
 
 class FinancialMetrics(BaseModel):
     gross_margin: float
-    gross_margin_trend: List[dict]
+    gross_margin_trend: list[dict]
     burn_rate: float
     runway_months: float
 

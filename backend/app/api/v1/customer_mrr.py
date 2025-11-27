@@ -22,14 +22,14 @@ async def get_customer_mrr_list(
 ):
     """
     Get detailed customer-by-customer MRR breakdown
-    
+
     Returns a list of all paying customers with their:
     - Customer ID and email
     - Subscription details
     - MRR contribution
     - Billing interval
     - Next invoice date
-    
+
     Use this for detailed analysis, exports, or building expandable UI tables.
     """
 
@@ -116,7 +116,7 @@ async def get_customer_mrr_list(
 async def get_mrr_by_tier():
     """
     Get MRR breakdown by customer tier
-    
+
     Categorizes customers into tiers based on MRR amount.
     """
 
@@ -194,7 +194,7 @@ async def get_mrr_by_tier():
 async def export_customer_mrr_csv():
     """
     Export customer MRR list as CSV format
-    
+
     Returns CSV string that can be saved to file.
     """
 

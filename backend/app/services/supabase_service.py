@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from supabase import Client, create_client
 
@@ -34,7 +34,7 @@ class SupabaseService:
     @classmethod
     def get_active_subscriptions(
         cls, product_category: Optional[str] = None
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Get active subscriptions from Supabase
 
@@ -70,7 +70,7 @@ class SupabaseService:
             return []
 
     @classmethod
-    def get_customers(cls) -> List[Dict]:
+    def get_customers(cls) -> list[dict]:
         """Get all customers from Supabase"""
         if not cls.client:
             cls.connect()
@@ -86,7 +86,7 @@ class SupabaseService:
             return []
 
     @classmethod
-    def get_latest_mrr_snapshot(cls) -> Optional[Dict]:
+    def get_latest_mrr_snapshot(cls) -> Optional[dict]:
         """Get the most recent MRR snapshot"""
         if not cls.client:
             cls.connect()
@@ -111,7 +111,7 @@ class SupabaseService:
             return None
 
     @classmethod
-    def get_mrr_snapshots(cls, limit: int = 12) -> List[Dict]:
+    def get_mrr_snapshots(cls, limit: int = 12) -> list[dict]:
         """
         Get historical MRR snapshots
 
@@ -138,12 +138,12 @@ class SupabaseService:
             return []
 
     @classmethod
-    def calculate_towpilot_metrics(cls) -> Dict[str, Any]:
+    def calculate_towpilot_metrics(cls) -> dict[str, Any]:
         """Calculate all metrics specific to TowPilot product"""
 
         # Get TowPilot subscriptions
         towpilot_subs = cls.get_active_subscriptions(product_category="TowPilot")
-        all_subs = cls.get_active_subscriptions()
+        cls.get_active_subscriptions()
 
         # Get customers
         all_customers = cls.get_customers()
@@ -229,7 +229,7 @@ class SupabaseService:
         }
 
     @classmethod
-    def calculate_all_products_metrics(cls) -> Dict[str, Any]:
+    def calculate_all_products_metrics(cls) -> dict[str, Any]:
         """Calculate metrics for all products combined"""
 
         all_customers = cls.get_customers()

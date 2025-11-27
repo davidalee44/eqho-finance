@@ -50,10 +50,10 @@ class SyncResponse(BaseModel):
 async def verify_admin(request: Request) -> bool:
     """
     Verify that the request is from an admin user.
-    
+
     Checks the Authorization header for a valid JWT with admin role.
     For now, we'll check a simple header or rely on frontend protection.
-    
+
     In production, this should validate the JWT and check the role claim.
     """
     admin_header = request.headers.get("X-Admin-Access")
@@ -82,11 +82,11 @@ async def get_supported_apps(
 ):
     """
     Get list of supported integrations.
-    
+
     Returns:
     - List of apps with their metadata (name, description, icon)
     - Connection status for each app
-    
+
     Admin-only endpoint.
     """
     try:
@@ -111,12 +111,12 @@ async def get_all_connection_status(
 ):
     """
     Get status of all integrations.
-    
+
     Returns:
     - Pipedream configuration status
     - Connection status for each supported app
     - Last sync timestamps
-    
+
     Admin-only endpoint.
     """
     try:
@@ -175,15 +175,15 @@ async def get_connection_status(
 ):
     """
     Get status of a specific integration.
-    
+
     Args:
         app: App slug (quickbooks, stripe, etc.)
-    
+
     Returns:
     - Connection status
     - Account details if connected
     - Last sync timestamp
-    
+
     Admin-only endpoint.
     """
     if app not in pipedream_service.SUPPORTED_APPS:
@@ -253,15 +253,15 @@ async def initiate_connection(
 ):
     """
     Initiate OAuth connection for an app via Pipedream Connect.
-    
+
     Args:
         app: App slug (quickbooks, stripe, etc.)
         request: Connection request with optional redirect URI
-    
+
     Returns:
     - Connect token for client-side OAuth
     - Connect URL to redirect user to
-    
+
     Admin-only endpoint.
     """
     if app not in pipedream_service.SUPPORTED_APPS:
@@ -314,18 +314,18 @@ async def handle_callback(
 ):
     """
     Handle Pipedream Connect callback/webhook.
-    
+
     This endpoint receives notifications from Pipedream when:
     - A user completes OAuth authorization
     - A connection is disconnected
     - Token refresh fails
-    
+
     The callback payload includes:
     - account_id: Pipedream account ID
     - external_user_id: Your app's user ID
     - app: App slug
     - event: connect, disconnect, error
-    
+
     Admin-only endpoint (though Pipedream will call this).
     """
     try:
@@ -415,13 +415,13 @@ async def disconnect_app(
 ):
     """
     Disconnect an integration.
-    
+
     Args:
         app: App slug (quickbooks, stripe, etc.)
-    
+
     Returns:
     - Success status
-    
+
     Admin-only endpoint.
     """
     if app not in pipedream_service.SUPPORTED_APPS:
@@ -485,14 +485,14 @@ async def trigger_sync(
 ):
     """
     Manually trigger a data sync for an integration.
-    
+
     Args:
         app: App slug (quickbooks, stripe, etc.)
-    
+
     Returns:
     - Sync status
     - Fetched data summary
-    
+
     Admin-only endpoint.
     """
     if app not in pipedream_service.SUPPORTED_APPS:
@@ -563,14 +563,14 @@ async def test_connection(
 ):
     """
     Test if an integration connection is working.
-    
+
     Args:
         app: App slug (quickbooks, stripe, etc.)
-    
+
     Returns:
     - Connection test result
     - Any error details
-    
+
     Admin-only endpoint.
     """
     if app not in pipedream_service.SUPPORTED_APPS:
@@ -631,11 +631,11 @@ async def test_connection(
 async def _sync_app_data(app: str, account_id: str) -> dict:
     """
     Perform app-specific data sync.
-    
+
     Args:
         app: App slug
         account_id: Pipedream account ID
-    
+
     Returns:
         Dict with success status, message, and data summary
     """

@@ -23,7 +23,7 @@ router = APIRouter()
 async def get_auth_url(state: Optional[str] = None):
     """
     Get QuickBooks OAuth authorization URL.
-    
+
     Returns URL to redirect user to for authorizing QuickBooks access.
     """
     try:
@@ -45,7 +45,7 @@ async def get_auth_url(state: Optional[str] = None):
 async def auth_callback(code: str, state: Optional[str] = None, realmId: Optional[str] = None):
     """
     OAuth callback endpoint for QuickBooks authorization.
-    
+
     After user authorizes, QuickBooks redirects here with the authorization code.
     """
     try:
@@ -54,7 +54,7 @@ async def auth_callback(code: str, state: Optional[str] = None, realmId: Optiona
             quickbooks_service.realm_id = realmId
 
         # Exchange code for tokens
-        tokens = await quickbooks_service.exchange_code_for_tokens(code)
+        await quickbooks_service.exchange_code_for_tokens(code)
 
         return {
             "success": True,
@@ -73,12 +73,12 @@ async def get_profit_loss(
 ):
     """
     Fetch Profit & Loss report from QuickBooks.
-    
+
     Args:
         start_date: Start date for the report period
         end_date: End date for the report period
         accounting_method: Accounting method to use
-        
+
     Returns:
         P&L report data from QuickBooks
     """
@@ -124,7 +124,7 @@ async def get_profit_loss(
 async def get_profit_loss_ytd():
     """
     Get Year-to-Date Profit & Loss summary.
-    
+
     Returns summarized P&L data with key metrics.
     """
     try:
@@ -163,7 +163,7 @@ async def get_payroll_summary(
 ):
     """
     Get payroll/labor cost summary.
-    
+
     Extracts labor costs from P&L expense categories.
     """
     try:
@@ -210,7 +210,7 @@ async def get_payroll_summary(
 async def get_quickbooks_status():
     """
     Get QuickBooks integration status.
-    
+
     Returns whether QuickBooks is configured and connected.
     """
     try:
@@ -234,7 +234,7 @@ async def get_quickbooks_status():
 async def store_manual_pl(pl_data: dict):
     """
     Store manually-entered P&L data.
-    
+
     Use this when QuickBooks isn't connected but you want to store
     P&L data for display in the dashboard.
     """

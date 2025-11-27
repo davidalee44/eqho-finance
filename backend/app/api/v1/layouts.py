@@ -3,7 +3,7 @@ Card layout management endpoints
 Handles fetching and updating dashboard card layouts
 """
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -15,12 +15,12 @@ router = APIRouter(prefix="/layouts", tags=["layouts"])
 
 
 class LayoutData(BaseModel):
-    layout_data: list[Dict[str, Any]]
+    layout_data: list[dict[str, Any]]
 
 
 class LayoutResponse(BaseModel):
     id: str
-    layout_data: list[Dict[str, Any]]
+    layout_data: list[dict[str, Any]]
     updated_by: Optional[str]
     updated_at: datetime
     created_at: datetime

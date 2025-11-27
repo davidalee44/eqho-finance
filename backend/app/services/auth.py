@@ -15,13 +15,13 @@ logger = logging.getLogger(__name__)
 async def get_current_user(authorization: Optional[str] = Header(None)) -> str:
     """
     Extract and validate user ID from JWT token
-    
+
     Args:
         authorization: Bearer token from Authorization header
-    
+
     Returns:
         user_id: The authenticated user's ID
-    
+
     Raises:
         HTTPException: If token is invalid or missing
     """
@@ -77,10 +77,10 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> str:
 async def get_user_role(user_id: str) -> Optional[str]:
     """
     Get user role from user metadata
-    
+
     Args:
         user_id: The user's ID
-    
+
     Returns:
         role: User role (admin, super_admin, investor, office) or None
     """
@@ -115,13 +115,13 @@ async def get_user_role(user_id: str) -> Optional[str]:
 async def require_admin(user_id: str = Depends(get_current_user)) -> str:
     """
     Dependency that requires admin or super_admin role
-    
+
     Args:
         user_id: The authenticated user's ID (from get_current_user)
-    
+
     Returns:
         user_id: The authenticated admin user's ID
-    
+
     Raises:
         HTTPException: If user is not an admin
     """
@@ -142,10 +142,10 @@ async def require_admin(user_id: str = Depends(get_current_user)) -> str:
 def is_admin_role(role: Optional[str]) -> bool:
     """
     Check if a role is an admin role
-    
+
     Args:
         role: User role string
-    
+
     Returns:
         bool: True if role is admin or super_admin
     """

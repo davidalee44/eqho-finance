@@ -13,8 +13,9 @@ Flow:
 5. Use Pipedream's proxy API to make authenticated requests
 """
 
+import base64
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 import httpx
 
@@ -23,7 +24,6 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 # Pipedream Connect API endpoints
-# Note: Connect API may use different base URL than regular Pipedream API
 PIPEDREAM_API_BASE = "https://api.pipedream.com/v1"
 PIPEDREAM_CONNECT_BASE = "https://api.pipedream.com/v1/connect"
 
@@ -31,14 +31,13 @@ PIPEDREAM_CONNECT_BASE = "https://api.pipedream.com/v1/connect"
 class PipedreamService:
     """
     Service for Pipedream Connect integration.
-    
+
     Provides:
     - Connect token generation for OAuth flows
     - Account status checking
     - Proxy requests through Pipedream
     """
 
-    # Supported apps with their Pipedream app slugs
     SUPPORTED_APPS = {
         "quickbooks": {
             "slug": "quickbooks",
@@ -76,88 +75,43 @@ class PipedreamService:
         self.client_secret = getattr(settings, 'PIPEDREAM_CLIENT_SECRET', '')
         self.environment = settings.PIPEDREAM_ENVIRONMENT
         self.webhook_secret = settings.PIPEDREAM_WEBHOOK_SECRET
-        
-        # OAuth token caching
-        self._access_token: Optional[str] = None
-        self._token_expires_at: Optional[float] = None
 
     @property
     def is_configured(self) -> bool:
         """Check if Pipedream credentials are configured"""
-        return bool(self.project_id and self.client_id and self.client_secret)
+        return bool(self.project_id and self.client_secret)
 
-    async def _get_oauth_token(self) -> str:
-        """
-        Get OAuth access token using client credentials.
-        
-        The Pipedream SDK first exchanges client_id + client_secret for an access token,
-        then uses that access token as Bearer for all subsequent API calls.
-        """
-        import time
-        
-        # Return cached token if still valid (with 2 min buffer)
-        if self._access_token and self._token_expires_at:
-            if time.time() < (self._token_expires_at - 120):
-                return self._access_token
-        
-        logger.debug("Fetching new Pipedream OAuth token")
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{PIPEDREAM_API_BASE}/oauth/token",
-                json={
-                    "grant_type": "client_credentials",
-                    "client_id": self.client_id,
-                    "client_secret": self.client_secret,
-                },
-                headers={
-                    "Content-Type": "application/json",
-                    "x-pd-environment": self.environment,
-                },
-                timeout=10,
-            )
-            
-            if response.status_code != 200:
-                logger.error(f"Failed to get OAuth token: {response.status_code} {response.text}")
-                raise Exception(f"Failed to get OAuth token: {response.status_code}")
-            
-            data = response.json()
-            self._access_token = data.get("access_token")
-            expires_in = data.get("expires_in", 3600)
-            self._token_expires_at = time.time() + expires_in
-            
-            logger.info("Successfully obtained Pipedream OAuth token")
-            return self._access_token
-
-    async def _get_auth_headers(self) -> Dict[str, str]:
-        """
-        Get authentication headers for Pipedream API.
-        
-        Uses OAuth2 flow: exchange client credentials for access token,
-        then use access token as Bearer for API calls.
-        """
-        access_token = await self._get_oauth_token()
-        
-        return {
+    def _get_auth_headers(self) -> dict[str, str]:
+        """Get authentication headers for Pipedream API."""
+        headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {access_token}",
-            "x-pd-environment": self.environment,
+            "X-PD-Environment": self.environment,
         }
+
+        if self.client_id and self.client_secret:
+            credentials = base64.b64encode(
+                f"{self.client_id}:{self.client_secret}".encode()
+            ).decode()
+            headers["Authorization"] = f"Basic {credentials}"
+        elif self.client_secret:
+            headers["Authorization"] = f"Bearer {self.client_secret}"
+
+        return headers
 
     async def create_connect_token(
         self,
         external_user_id: str,
         app: str,
         redirect_uri: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict:
         """
         Create a connect token for client-side OAuth initialization.
-        
+
         Args:
-            external_user_id: Your app's user ID (maps to Pipedream external user)
+            external_user_id: Your app's user ID
             app: App slug (e.g., 'quickbooks', 'stripe')
             redirect_uri: Where to redirect after OAuth completes
-            
+
         Returns:
             Dict with token, expires_at, and connect_link_url
         """
@@ -169,67 +123,71 @@ class PipedreamService:
 
         app_config = self.SUPPORTED_APPS[app]
 
-        # Build payload for Pipedream Connect token creation
         payload = {
             "external_user_id": external_user_id,
+            "app": app_config["slug"],
         }
 
-        # Get OAuth headers (async - fetches token if needed)
-        headers = await self._get_auth_headers()
+        if redirect_uri:
+            payload["success_redirect_uri"] = redirect_uri
+            payload["error_redirect_uri"] = redirect_uri
 
-        # The SDK uses /v1/connect/{projectId}/tokens endpoint with Bearer auth
-        endpoint = f"{PIPEDREAM_API_BASE}/connect/{self.project_id}/tokens"
+        if self.project_id:
+            payload["project_id"] = self.project_id
 
-        try:
-            async with httpx.AsyncClient() as client:
-                logger.debug(f"Creating connect token at: {endpoint}")
-                response = await client.post(
-                    endpoint,
-                    headers=headers,
-                    json=payload,
-                    timeout=15,
-                )
+        headers = self._get_auth_headers()
 
-                if response.status_code == 200:
-                    data = response.json()
-                    logger.info(f"Created connect token for {app} (user: {external_user_id})")
-                    return {
-                        "token": data.get("token"),
-                        "expires_at": data.get("expires_at"),
-                        "connect_link_url": data.get("connect_link_url"),
-                        "app": app,
-                        "app_name": app_config["name"],
-                    }
+        endpoints_to_try = [
+            f"{PIPEDREAM_API_BASE}/connect/tokens",
+            f"{PIPEDREAM_API_BASE}/connect/{self.project_id}/tokens" if self.project_id else None,
+            f"https://api.pipedream.com/v1/projects/{self.project_id}/connect/tokens" if self.project_id else None,
+        ]
 
-                # Log error details
-                logger.error(f"Pipedream token creation failed: {response.status_code} {response.text[:500]}")
-                raise Exception(f"Failed to create connect token: {response.status_code}: {response.text[:200]}")
+        last_error = None
+        for endpoint in endpoints_to_try:
+            if not endpoint:
+                continue
 
-        except httpx.TimeoutException:
-            logger.error("Pipedream token creation timed out")
-            raise Exception("Pipedream API timeout")
-        except Exception as e:
-            logger.error(f"Pipedream token creation error: {e}")
-            raise
+            try:
+                async with httpx.AsyncClient() as client:
+                    logger.debug(f"Trying Pipedream endpoint: {endpoint}")
+                    response = await client.post(
+                        endpoint,
+                        headers=headers,
+                        json=payload,
+                    )
 
-    async def get_account(self, account_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Get details for a connected account.
-        
-        Args:
-            account_id: Pipedream account ID
-            
-        Returns:
-            Account details or None if not found
-        """
+                    if response.status_code == 200:
+                        data = response.json()
+                        logger.info(f"Created connect token for {app} (user: {external_user_id})")
+                        return {
+                            "token": data.get("token"),
+                            "expires_at": data.get("expires_at"),
+                            "connect_link_url": data.get("connect_link_url"),
+                            "app": app,
+                            "app_name": app_config["name"],
+                        }
+
+                    logger.debug(f"Endpoint {endpoint} returned {response.status_code}: {response.text[:200]}")
+                    last_error = f"{response.status_code}: {response.text[:200]}"
+
+            except Exception as e:
+                logger.debug(f"Endpoint {endpoint} failed: {e}")
+                last_error = str(e)
+                continue
+
+        logger.error(f"All Pipedream endpoints failed. Last error: {last_error}")
+        raise Exception(f"Failed to create connect token: {last_error}")
+
+    async def get_account(self, account_id: str) -> Optional[dict]:
+        """Get details for a connected account."""
         if not self.is_configured:
             return None
 
-        headers = await self._get_auth_headers()
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{PIPEDREAM_API_BASE}/connect/accounts/{account_id}",
-                headers=headers,
+                headers=self._get_auth_headers(),
             )
 
             if response.status_code == 404:
@@ -245,17 +203,8 @@ class PipedreamService:
         self,
         external_user_id: str,
         app: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        """
-        Get all connected accounts for an external user.
-        
-        Args:
-            external_user_id: Your app's user ID
-            app: Optional app filter
-            
-        Returns:
-            List of connected accounts
-        """
+    ) -> list[dict]:
+        """Get all connected accounts for an external user."""
         if not self.is_configured:
             return []
 
@@ -263,11 +212,10 @@ class PipedreamService:
         if app:
             params["app"] = app
 
-        headers = await self._get_auth_headers()
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{PIPEDREAM_API_BASE}/connect/accounts",
-                headers=headers,
+                headers=self._get_auth_headers(),
                 params=params,
             )
 
@@ -279,23 +227,14 @@ class PipedreamService:
             return data.get("data", [])
 
     async def delete_account(self, account_id: str) -> bool:
-        """
-        Delete/disconnect an account.
-        
-        Args:
-            account_id: Pipedream account ID
-            
-        Returns:
-            True if deleted successfully
-        """
+        """Delete/disconnect an account."""
         if not self.is_configured:
             return False
 
-        headers = await self._get_auth_headers()
         async with httpx.AsyncClient() as client:
             response = await client.delete(
                 f"{PIPEDREAM_API_BASE}/connect/accounts/{account_id}",
-                headers=headers,
+                headers=self._get_auth_headers(),
             )
 
             if response.status_code in [200, 204]:
@@ -305,24 +244,15 @@ class PipedreamService:
             logger.error(f"Failed to delete account: {response.status_code}")
             return False
 
-    async def get_account_credentials(self, account_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Get OAuth credentials for an account (for direct API calls).
-        
-        Args:
-            account_id: Pipedream account ID
-            
-        Returns:
-            Dict with access_token, refresh_token, etc.
-        """
+    async def get_account_credentials(self, account_id: str) -> Optional[dict]:
+        """Get OAuth credentials for an account (for direct API calls)."""
         if not self.is_configured:
             return None
 
-        headers = await self._get_auth_headers()
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{PIPEDREAM_API_BASE}/connect/accounts/{account_id}/credentials",
-                headers=headers,
+                headers=self._get_auth_headers(),
             )
 
             if response.status_code != 200:
@@ -336,33 +266,18 @@ class PipedreamService:
         account_id: str,
         method: str,
         url: str,
-        data: Optional[Dict] = None,
-        params: Optional[Dict] = None,
-    ) -> Dict[str, Any]:
-        """
-        Make an authenticated API request through Pipedream's proxy.
-        
-        Pipedream handles token refresh and authentication automatically.
-        
-        Args:
-            account_id: Pipedream account ID
-            method: HTTP method
-            url: Full URL of the target API endpoint
-            data: Request body (for POST/PUT)
-            params: Query parameters
-            
-        Returns:
-            API response data
-        """
+        data: Optional[dict] = None,
+        params: Optional[dict] = None,
+    ) -> dict:
+        """Make an authenticated API request through Pipedream's proxy."""
         if not self.is_configured:
             raise ValueError("Pipedream credentials not configured")
 
-        headers = await self._get_auth_headers()
         async with httpx.AsyncClient() as client:
             response = await client.request(
                 "POST",
                 f"{PIPEDREAM_API_BASE}/connect/proxy",
-                headers=headers,
+                headers=self._get_auth_headers(),
                 json={
                     "account_id": account_id,
                     "method": method,
@@ -378,23 +293,13 @@ class PipedreamService:
 
             return response.json()
 
-    async def test_connection(self, account_id: str, app: str) -> Dict[str, Any]:
-        """
-        Test if a connection is working by making a simple API call.
-        
-        Args:
-            account_id: Pipedream account ID
-            app: App slug
-            
-        Returns:
-            Dict with status and any error message
-        """
+    async def test_connection(self, account_id: str, app: str) -> dict:
+        """Test if a connection is working by making a simple API call."""
         try:
             account = await self.get_account(account_id)
             if not account:
                 return {"status": "error", "message": "Account not found"}
 
-            # App-specific test endpoints
             test_endpoints = {
                 "quickbooks": "https://quickbooks.api.intuit.com/v3/company/{realm_id}/companyinfo/{realm_id}",
                 "stripe": "https://api.stripe.com/v1/balance",
@@ -405,7 +310,6 @@ class PipedreamService:
             if app not in test_endpoints:
                 return {"status": "unknown", "message": f"No test endpoint for {app}"}
 
-            # For QuickBooks, we need the realm_id from account metadata
             url = test_endpoints[app]
             if app == "quickbooks":
                 realm_id = account.get("credentials", {}).get("realm_id")
@@ -433,7 +337,7 @@ class PipedreamService:
                 "message": str(e),
             }
 
-    def get_supported_apps(self) -> List[Dict[str, Any]]:
+    def get_supported_apps(self) -> list[dict]:
         """Get list of supported integrations with metadata"""
         return [
             {
@@ -446,4 +350,3 @@ class PipedreamService:
 
 # Singleton instance
 pipedream_service = PipedreamService()
-

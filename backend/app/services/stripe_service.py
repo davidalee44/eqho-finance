@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import stripe
 
@@ -21,11 +21,11 @@ class StripeService:
     @staticmethod
     async def _paginate_stripe_list(
         list_fn: Callable,
-        params: Dict[str, Any],
+        params: dict[str, Any],
         item_processor: Optional[Callable] = None,
         filter_fn: Optional[Callable] = None,
         page_size: int = DEFAULT_PAGE_SIZE,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Generic pagination helper for Stripe list APIs.
 
@@ -108,7 +108,7 @@ class StripeService:
         return results
 
     @staticmethod
-    async def get_all_customers(has_tag: Optional[str] = None) -> List[Dict]:
+    async def get_all_customers(has_tag: Optional[str] = None) -> list[dict]:
         """
         Fetch all customers, optionally filtered by tag
 
@@ -148,8 +148,8 @@ class StripeService:
 
     @staticmethod
     async def get_active_subscriptions(
-        customer_ids: Optional[List[str]] = None,
-    ) -> List[Dict]:
+        customer_ids: Optional[list[str]] = None,
+    ) -> list[dict]:
         """Fetch active subscriptions, optionally filtered by customer IDs"""
         customer_id_set = set(customer_ids) if customer_ids else None
 
@@ -185,7 +185,7 @@ class StripeService:
         )
 
     @staticmethod
-    async def calculate_mrr(subscriptions: List[Dict]) -> float:
+    async def calculate_mrr(subscriptions: list[dict]) -> float:
         """Calculate Monthly Recurring Revenue from subscriptions
 
         Excludes $0 subscriptions (trials, free tiers) from MRR calculation.
@@ -219,7 +219,7 @@ class StripeService:
         return round(mrr, 2)
 
     @staticmethod
-    async def calculate_acv(subscriptions: List[Dict]) -> float:
+    async def calculate_acv(subscriptions: list[dict]) -> float:
         """Calculate Average Contract Value"""
         if not subscriptions:
             return 0.0
@@ -247,7 +247,7 @@ class StripeService:
         return round(total_annual_value / len(subscriptions), 2)
 
     @staticmethod
-    async def get_revenue_by_month(months: int = 12) -> List[Dict]:
+    async def get_revenue_by_month(months: int = 12) -> list[dict]:
         """
         Get revenue data for the past N months
 
@@ -305,7 +305,7 @@ class StripeService:
         return result
 
     @staticmethod
-    async def _get_all_subscriptions_with_items() -> List[Dict]:
+    async def _get_all_subscriptions_with_items() -> list[dict]:
         """
         Fetch all subscriptions (active and canceled) with item details.
         Uses pagination helper to ensure complete data retrieval.
@@ -337,7 +337,7 @@ class StripeService:
         )
 
     @staticmethod
-    async def _get_all_subscriptions_basic() -> List[Dict]:
+    async def _get_all_subscriptions_basic() -> list[dict]:
         """
         Fetch all subscriptions (active and canceled) with basic details.
         Uses pagination helper to ensure complete data retrieval.
@@ -359,7 +359,7 @@ class StripeService:
         )
 
     @staticmethod
-    async def calculate_churn_rate(months: int = 3) -> Dict:
+    async def calculate_churn_rate(months: int = 3) -> dict:
         """
         Calculate customer and revenue churn rates from Stripe data
 
@@ -426,7 +426,7 @@ class StripeService:
         }
 
     @staticmethod
-    async def calculate_arpu(subscriptions: Optional[List[Dict]] = None) -> Dict:
+    async def calculate_arpu(subscriptions: Optional[list[dict]] = None) -> dict:
         """
         Calculate Average Revenue Per User (ARPU)
 
@@ -465,7 +465,7 @@ class StripeService:
         }
 
     @staticmethod
-    async def calculate_customer_metrics() -> Dict:
+    async def calculate_customer_metrics() -> dict:
         """
         Calculate comprehensive customer metrics including active, churned, net adds, and growth
 
@@ -526,7 +526,7 @@ class StripeService:
         }
 
     @staticmethod
-    async def calculate_retention_by_segment() -> Dict:
+    async def calculate_retention_by_segment() -> dict:
         """
         Calculate retention rates by product segment (TowPilot vs Other Products)
 
@@ -607,7 +607,7 @@ class StripeService:
         }
 
     @staticmethod
-    async def calculate_pricing_tier_breakdown() -> Dict:
+    async def calculate_pricing_tier_breakdown() -> dict:
         """
         Calculate pricing tier breakdown for TowPilot subscriptions
 
@@ -679,7 +679,7 @@ class StripeService:
         }
 
     @staticmethod
-    async def calculate_expansion_metrics() -> Dict:
+    async def calculate_expansion_metrics() -> dict:
         """
         Calculate expansion metrics including gross and net retention
 
@@ -731,7 +731,7 @@ class StripeService:
         }
 
     @staticmethod
-    async def calculate_unit_economics() -> Dict:
+    async def calculate_unit_economics() -> dict:
         """
         Calculate unit economics including CAC, LTV, LTV/CAC ratio, and payback period
 
@@ -780,7 +780,7 @@ class StripeService:
         }
 
     @staticmethod
-    async def get_stripe_balance() -> Dict:
+    async def get_stripe_balance() -> dict:
         """
         Fetch Stripe account balance (available + pending).
 
@@ -843,7 +843,7 @@ class StripeService:
             raise
 
     @staticmethod
-    async def get_upcoming_billings(days: int = 30) -> Dict:
+    async def get_upcoming_billings(days: int = 30) -> dict:
         """
         Get upcoming subscription billings for the next N days.
 
@@ -1022,7 +1022,7 @@ class StripeService:
         }
 
     @staticmethod
-    async def get_recent_payouts(limit: int = 10) -> List[Dict]:
+    async def get_recent_payouts(limit: int = 10) -> list[dict]:
         """
         Get recent Stripe payouts (transfers to bank account).
 
@@ -1058,7 +1058,7 @@ class StripeService:
             return []
 
     @staticmethod
-    async def get_pending_charges() -> Dict:
+    async def get_pending_charges() -> dict:
         """
         Get charges that are pending (not yet captured or failed).
 

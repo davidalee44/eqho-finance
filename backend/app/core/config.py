@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List
 
 from pydantic_settings import BaseSettings
 
@@ -13,7 +12,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Eqho Due Diligence API"
 
     # CORS
-    CORS_ORIGINS: List[str] = [
+    CORS_ORIGINS: list[str] = [
         "http://localhost:5173",  # Vite dev server
         "http://localhost:3000",  # Alternative port
         "https://eqho-due-diligence.vercel.app",  # Production (update as needed)

@@ -44,7 +44,7 @@ class AccessNotificationRequest(BaseModel):
 async def send_investor_invite(request: InvestorInviteRequest):
     """
     Send investor invitation email
-    
+
     Example:
         POST /api/v1/emails/invite-investor
         {
@@ -76,7 +76,7 @@ async def send_investor_invite(request: InvestorInviteRequest):
 async def send_welcome_email(request: WelcomeEmailRequest):
     """
     Send welcome email after successful signup
-    
+
     Example:
         POST /api/v1/emails/welcome
         {
@@ -106,7 +106,7 @@ async def send_welcome_email(request: WelcomeEmailRequest):
 async def send_deal_update(request: DealUpdateRequest):
     """
     Send deal update to investor
-    
+
     Example:
         POST /api/v1/emails/deal-update
         {
@@ -138,7 +138,7 @@ async def send_deal_update(request: DealUpdateRequest):
 async def send_access_notification(request: AccessNotificationRequest):
     """
     Notify admin when someone accesses the deck
-    
+
     Example:
         POST /api/v1/emails/access-notification
         {
@@ -172,7 +172,7 @@ async def send_access_notification(request: AccessNotificationRequest):
 async def test_email():
     """
     Test endpoint to verify email service is working
-    
+
     Returns API configuration status
     """
     return {

@@ -4,7 +4,7 @@ Handles all transactional emails for Eqho Investor Deck
 """
 
 import os
-from typing import Any, Dict
+from typing import Any
 
 import requests
 
@@ -22,10 +22,10 @@ class EmailService:
         to_email: str,
         investor_name: str,
         invite_url: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send investor invitation email with access link
-        
+
         Args:
             to_email: Investor's email address
             investor_name: Investor's full name
@@ -45,12 +45,12 @@ class EmailService:
                 <h1 style="color: white; margin: 0;">🚀 Eqho</h1>
                 <p style="color: white; margin: 10px 0 0 0;">Investor Relations</p>
             </div>
-            
+
             <div style="background: #f7f7f7; padding: 30px; border-radius: 0 0 10px 10px;">
                 <h2 style="color: #333; margin-top: 0;">Hi {investor_name},</h2>
-                
+
                 <p>You've been invited to review Eqho's confidential investor deck for our <strong>$500K seed round</strong>.</p>
-                
+
                 <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
                     <h3 style="color: #667eea; margin-top: 0;">Investment Opportunity Highlights:</h3>
                     <ul style="color: #555;">
@@ -60,18 +60,18 @@ class EmailService:
                         <li><strong>Margins:</strong> 69% → 82% gross margin trajectory</li>
                     </ul>
                 </div>
-                
+
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="{invite_url}" 
+                    <a href="{invite_url}"
                        style="background: #667eea; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
                         Access Investor Deck →
                     </a>
                 </div>
-                
+
                 <p style="color: #666; font-size: 14px;">
                     This is a confidential invitation. Please do not share this link.
                 </p>
-                
+
                 <div style="border-top: 2px solid #ddd; margin-top: 30px; padding-top: 20px; text-align: center; color: #999; font-size: 12px;">
                     <p>Eqho, LLC | Confidential Investment Opportunity</p>
                     <p>If you have questions, reply to this email or contact us at investors@eqho.ai</p>
@@ -88,10 +88,10 @@ class EmailService:
         cls,
         to_email: str,
         user_name: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send welcome email after successful signup
-        
+
         Args:
             to_email: User's email address
             user_name: User's full name
@@ -106,9 +106,9 @@ class EmailService:
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2>Welcome to Eqho, {user_name}!</h2>
-            
+
             <p>Your account has been successfully created. You now have access to our confidential investor deck.</p>
-            
+
             <div style="background: #f0f4ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
                 <h3 style="margin-top: 0;">What's Inside:</h3>
                 <ul>
@@ -120,20 +120,20 @@ class EmailService:
                     <li><strong>Investment Terms</strong> - $500K seed round details</li>
                 </ul>
             </div>
-            
+
             <div style="text-align: center; margin: 30px 0;">
-                <a href="https://eqho-due-diligence.vercel.app" 
+                <a href="https://eqho-due-diligence.vercel.app"
                    style="background: #667eea; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
                     View Investor Deck →
                 </a>
             </div>
-            
+
             <p style="color: #666; font-size: 14px;">
                 This information is confidential. Please do not share without authorization.
             </p>
-            
+
             <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
-            
+
             <p style="color: #999; font-size: 12px; text-align: center;">
                 Questions? Contact us at investors@eqho.ai
             </p>
@@ -150,10 +150,10 @@ class EmailService:
         user_email: str,
         user_name: str,
         user_role: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Notify admin when someone accesses the deck
-        
+
         Args:
             admin_email: Admin's email address
             user_email: User who accessed the deck
@@ -167,16 +167,16 @@ class EmailService:
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
             <h2>🔔 Investor Deck Access Notification</h2>
-            
+
             <p>A user has accessed the Eqho Investor Deck:</p>
-            
+
             <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
                 <p><strong>Name:</strong> {user_name}</p>
                 <p><strong>Email:</strong> {user_email}</p>
                 <p><strong>Role:</strong> {user_role}</p>
                 <p><strong>Time:</strong> {cls._get_timestamp()}</p>
             </div>
-            
+
             <p>View all access logs in <a href="https://supabase.com/dashboard/project/yindsqbhygvskolbccqq/auth/users">Supabase Dashboard</a></p>
         </body>
         </html>
@@ -190,10 +190,10 @@ class EmailService:
         to_email: str,
         update_title: str,
         update_content: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send deal update to investors
-        
+
         Args:
             to_email: Investor's email
             update_title: Update title
@@ -208,23 +208,23 @@ class EmailService:
             <div style="background: #667eea; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
                 <h1 style="color: white; margin: 0;">Eqho Investor Update</h1>
             </div>
-            
+
             <div style="background: #f7f7f7; padding: 30px; border-radius: 0 0 8px 8px;">
                 <h2 style="color: #333;">{update_title}</h2>
-                
+
                 <div style="color: #555;">
                     {update_content}
                 </div>
-                
+
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="https://eqho-due-diligence.vercel.app" 
+                    <a href="https://eqho-due-diligence.vercel.app"
                        style="background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
                         View Latest Deck →
                     </a>
                 </div>
-                
+
                 <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
-                
+
                 <p style="color: #999; font-size: 12px; text-align: center;">
                     Eqho, LLC | investors@eqho.ai
                 </p>
@@ -241,15 +241,15 @@ class EmailService:
         to: str,
         subject: str,
         html: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Internal method to send email via Resend API
-        
+
         Args:
             to: Recipient email address
             subject: Email subject
             html: HTML content
-        
+
         Returns:
             API response dict
         """

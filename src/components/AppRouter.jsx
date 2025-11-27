@@ -41,7 +41,7 @@ function UnauthorizedAccess() {
           Unauthorized Access
         </h1>
         <p className="text-gray-400 mb-6">
-          You don't have permission to access this application.
+          You don&apos;t have permission to access this application.
         </p>
         <p className="text-gray-500 text-sm mb-6">
           Please contact your administrator if you believe this is an error.
