@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     QUICKBOOKS_REALM_ID: str = ""  # Your company ID from QuickBooks
     QUICKBOOKS_USE_SANDBOX: bool = False  # Set to True for sandbox/development
 
+    # Frontend URL Configuration
+    # Used for OAuth redirect URIs - set based on environment
+    # Dev: http://localhost:5173
+    # Vercel Preview: Auto-detected from VERCEL_URL env var
+    # Production: https://app.eqho.ai or your production domain
+    FRONTEND_URL: str = "http://localhost:5173"
+
     class Config:
         # Look for .env in backend directory (relative to this file)
         env_file = str(_ENV_FILE_PATH)

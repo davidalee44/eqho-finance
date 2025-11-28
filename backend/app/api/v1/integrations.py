@@ -125,10 +125,9 @@ async def get_all_connection_status(
     """
     try:
         supabase = await get_supabase_client()
-        external_user_id = user_id or "eqho-admin"
 
         # Step 1: Fetch ALL connected accounts from Pipedream (source of truth)
-        # We fetch all accounts in the project because external_user_id may vary
+        # We fetch all accounts in the project regardless of external_user_id
         pipedream_accounts = []
         if pipedream_service.is_configured:
             try:
@@ -169,9 +168,9 @@ async def get_all_connection_status(
                 # Use the Pipedream external_id as the user identifier
                 # This is a UUID assigned by Pipedream per-account
                 pd_external_id = pd_account.get("external_id")
-                
+
                 logger.info(f"Syncing Pipedream account: app={normalized_app}, account_id={account_id}, external_id={pd_external_id}")
-                
+
                 # Check if this connection already exists in Supabase (by account_id)
                 try:
                     existing = (
@@ -209,7 +208,7 @@ async def get_all_connection_status(
                             except (ValueError, TypeError):
                                 # Not a valid UUID, skip setting user_id
                                 logger.debug(f"external_id '{pd_external_id}' is not a valid UUID, skipping user_id")
-                        
+
                         insert_data = {
                             "account_id": account_id,
                             "app": normalized_app,
@@ -222,11 +221,11 @@ async def get_all_connection_status(
                                 "app_details": pd_account.get("app_details", {}),
                             },
                         }
-                        
+
                         # Only include user_id if we have a valid UUID
                         if user_id_for_db:
                             insert_data["user_id"] = user_id_for_db
-                        
+
                         supabase.table("pipedream_connections").insert(insert_data).execute()
                         logger.info(f"Created new connection for {normalized_app}")
 
@@ -236,7 +235,7 @@ async def get_all_connection_status(
         # Step 3: Build connections dict from Pipedream accounts (source of truth)
         # Even if Supabase sync fails, we can still show connection status from Pipedream
         connections = {}
-        
+
         # First, add all Pipedream accounts to connections
         for pd_account in pipedream_accounts:
             app_field = pd_account.get("app", {})
@@ -244,7 +243,7 @@ async def get_all_connection_status(
                 app_slug = app_field.get("name_slug") or app_field.get("name", "").lower()
             else:
                 app_slug = str(app_field) if app_field else ""
-            
+
             normalized_app = _normalize_app_slug(app_slug) if app_slug else None
             if normalized_app:
                 connections[normalized_app] = {
@@ -256,7 +255,7 @@ async def get_all_connection_status(
                         "healthy": pd_account.get("healthy"),
                     },
                 }
-        
+
         # Then, try to merge with Supabase data (if available)
         if supabase:
             try:
@@ -451,11 +450,14 @@ async def initiate_connection(
         # In a multi-tenant setup, this would be the organization/user ID
         external_user_id = "eqho-admin"
 
+        # Build redirect URI from settings (environment-aware)
+        default_redirect = f"{settings.FRONTEND_URL}/admin/integrations"
+
         # Create connect token
         token_data = await pipedream_service.create_connect_token(
             external_user_id=external_user_id,
             app=app,
-            redirect_uri=request.redirect_uri or "http://localhost:5173/admin/integrations",
+            redirect_uri=request.redirect_uri or default_redirect,
         )
 
         # Build the connect URL - ensure it includes the app parameter

@@ -2,7 +2,7 @@ import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter, useNavigate } from 'react-router-dom'
 import { AppRouter } from './components/AppRouter'
 import PixelRocketHero from './components/PixelRocketHero'
 import { AuthProvider } from './contexts/AuthContext'
@@ -17,6 +17,16 @@ function AuthWrapper() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [authView, setAuthView] = useState('sign_in')
+  const [isNewLogin, setIsNewLogin] = useState(false)
+  const navigate = useNavigate()
+
+  // Redirect to journey page on fresh login
+  useEffect(() => {
+    if (isNewLogin && session) {
+      setIsNewLogin(false)
+      navigate('/journey')
+    }
+  }, [isNewLogin, session, navigate])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -30,8 +40,11 @@ function AuthWrapper() {
       setSession(session)
       setLoading(false)
       
-      // Log auth events for audit trail
+      // Log auth events for audit trail and handle redirects
       if (event === 'SIGNED_IN' && session) {
+        // Mark this as a fresh login to trigger redirect to journey
+        setIsNewLogin(true)
+        
         try {
           await logAction(ACTION_TYPES.LOGIN, {
             method: 'supabase_auth',
@@ -56,21 +69,45 @@ function AuthWrapper() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900">
+        <img 
+          src="/eqho-light.png" 
+          alt="Eqho" 
+          className="h-16 mb-4 animate-pulse"
+          onError={(e) => {
+            e.target.style.display = 'none';
+          }}
+        />
+        <div className="text-cyan-300 text-sm">Loading...</div>
       </div>
     )
   }
 
+  // Show the original PixelRocketHero login screen when not logged in
   if (!session) {
     return (
       <PixelRocketHero>
         <div className="w-screen px-2 md:w-full md:max-w-md md:mx-auto md:px-0">
           <div className="bg-black/60 backdrop-blur-xl rounded-lg sm:rounded-xl md:rounded-2xl shadow-2xl p-6 sm:p-7 md:p-8 border-2 border-cyan-500/30">
-            {/* Header */}
+            {/* Header with Logo */}
             <div className="text-center mb-4 sm:mb-6 md:mb-8">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
-                Eqho Investor Portal
+              <div className="flex justify-center mb-4">
+                <img 
+                  src="/eqho-light.png" 
+                  alt="Eqho" 
+                  className="h-10 sm:h-12 md:h-14"
+                  onError={(e) => {
+                    // Fallback to text if image fails to load
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'block';
+                  }}
+                />
+                <span className="hidden text-xl sm:text-2xl md:text-3xl font-bold text-white">
+                  Eqho
+                </span>
+              </div>
+              <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-white mb-2">
+                Investor Portal
               </h2>
               <p className="text-cyan-300 text-xs sm:text-sm">
                 Secure Access Required
@@ -248,4 +285,3 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </React.StrictMode>,
 )
-

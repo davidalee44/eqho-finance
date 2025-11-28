@@ -20,6 +20,7 @@
     "vercel-build": "node scripts/validate-env.cjs --ci && vite build"
   },
   "dependencies": {
+    "@icons-pack/react-simple-icons": "^13.8.0",
     "@pipedream/connect-react": "^2.1.1",
     "@pipedream/sdk": "^2.3.0",
     "@radix-ui/react-accordion": "^1.2.12",

@@ -342,8 +342,47 @@ const FinancialReport = () => {
 
       <Separator />
 
-      {/* Executive Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* Executive Summary Cards - Bento Box Layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 lg:grid-rows-2 gap-3 sm:gap-4">
+        {/* Net Income - Large Card (spans 2 cols, 2 rows on desktop) */}
+        <Card className="lg:col-span-2 lg:row-span-2 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium lg:text-base">Net Income</CardTitle>
+            <TrendingDown className="h-4 w-4 lg:h-5 lg:w-5 text-destructive" />
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col justify-center">
+            <div className="text-2xl lg:text-4xl font-bold text-muted-foreground">{formatCurrency(metrics.netIncome)}</div>
+            <p className="text-xs lg:text-sm text-muted-foreground mt-2">Pre-investment growth stage</p>
+            
+            {/* Additional context for larger card */}
+            <div className="mt-4 lg:mt-6 pt-4 border-t border-border">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Revenue</p>
+                  <p className="text-sm lg:text-lg font-semibold">{formatCurrency(metrics.totalIncome)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Expenses</p>
+                  <p className="text-sm lg:text-lg font-semibold">{formatCurrency(metrics.totalExpenses)}</p>
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                  <span>Operating Margin</span>
+                  <span>{metrics.netIncome < 0 ? '-' : ''}{Math.abs(Math.round((metrics.netIncome / metrics.totalIncome) * 100))}%</span>
+                </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full ${metrics.netIncome >= 0 ? 'bg-green-500' : 'bg-destructive'}`}
+                    style={{ width: `${Math.min(Math.abs((metrics.netIncome / metrics.totalIncome) * 100), 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Revenue - Small Card (top right) */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -355,6 +394,7 @@ const FinancialReport = () => {
           </CardContent>
         </Card>
 
+        {/* Gross Profit - Small Card (top right) */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Gross Profit</CardTitle>
@@ -366,20 +406,10 @@ const FinancialReport = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        {/* 90-Day Forecast - Wide Card (bottom right, spans 2 cols) */}
+        <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Net Income</CardTitle>
-            <TrendingDown className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-muted-foreground">{formatCurrency(metrics.netIncome)}</div>
-            <p className="text-xs text-muted-foreground">Pre-investment growth stage</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">90-Day Forecast</CardTitle>
+            <CardTitle className="text-sm font-medium">90-Day Cash Forecast</CardTitle>
             {showWithInvestment ? (
               <TrendingUp className="h-4 w-4 text-green-600" />
             ) : (
@@ -387,23 +417,37 @@ const FinancialReport = () => {
             )}
           </CardHeader>
           <CardContent>
-            {showWithInvestment ? (
-              <>
-                <div className="text-2xl font-bold text-green-600">
-                  {formatCurrency(cashFlowForecast[cashFlowForecast.length - 1].endingCash)}
-                </div>
-                <p className="text-xs text-green-600">Ending cash position</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  With {formatCurrency(capitalRaise)} investment
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="text-2xl font-bold text-destructive">-{formatCurrency(337500)}</div>
-                <p className="text-xs text-destructive">Projected cash burn</p>
-                <p className="text-xs text-muted-foreground mt-1">Without investment</p>
-              </>
-            )}
+            <div className="flex items-center justify-between">
+              <div>
+                {showWithInvestment ? (
+                  <>
+                    <div className="text-2xl font-bold text-green-600">
+                      {formatCurrency(cashFlowForecast[cashFlowForecast.length - 1].endingCash)}
+                    </div>
+                    <p className="text-xs text-green-600">Ending cash position</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      With {formatCurrency(capitalRaise)} investment
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold text-destructive">-{formatCurrency(337500)}</div>
+                    <p className="text-xs text-destructive">Projected cash burn</p>
+                    <p className="text-xs text-muted-foreground mt-1">Without investment</p>
+                  </>
+                )}
+              </div>
+              {/* Mini trend indicator for wide card */}
+              <div className="hidden lg:flex items-end gap-1 h-12">
+                {[40, 55, 45, 70, 60, 85, 75].map((h, i) => (
+                  <div 
+                    key={i}
+                    className={`w-2 rounded-t ${showWithInvestment ? 'bg-green-500/60' : 'bg-destructive/60'}`}
+                    style={{ height: `${h}%` }}
+                  />
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

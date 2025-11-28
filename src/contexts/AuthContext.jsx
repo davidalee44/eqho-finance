@@ -79,7 +79,7 @@ export function AuthProvider({ children }) {
       } finally {
         if (isMounted) {
           clearTimeout(timeoutId);
-          setLoading(false);
+        setLoading(false);
         }
       }
     };
