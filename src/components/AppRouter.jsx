@@ -279,7 +279,8 @@ export function AppRouter() {
           </AdminRoute>
         } 
       />
-      <Route path="/journey" element={<LandingPage />} />
+      {/* Journey timeline disabled for now */}
+      {/* <Route path="/journey" element={<LandingPage />} /> */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

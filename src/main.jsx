@@ -20,13 +20,13 @@ function AuthWrapper() {
   const [isNewLogin, setIsNewLogin] = useState(false)
   const navigate = useNavigate()
 
-  // Redirect to journey page on fresh login
-  useEffect(() => {
-    if (isNewLogin && session) {
-      setIsNewLogin(false)
-      navigate('/journey')
-    }
-  }, [isNewLogin, session, navigate])
+  // Redirect to journey page on fresh login (disabled for now)
+  // useEffect(() => {
+  //   if (isNewLogin && session) {
+  //     setIsNewLogin(false)
+  //     navigate('/journey')
+  //   }
+  // }, [isNewLogin, session, navigate])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -40,10 +40,10 @@ function AuthWrapper() {
       setSession(session)
       setLoading(false)
       
-      // Log auth events for audit trail and handle redirects
+      // Log auth events for audit trail
       if (event === 'SIGNED_IN' && session) {
-        // Mark this as a fresh login to trigger redirect to journey
-        setIsNewLogin(true)
+        // Journey redirect disabled for now
+        // setIsNewLogin(true)
         
         try {
           await logAction(ACTION_TYPES.LOGIN, {
