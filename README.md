@@ -94,8 +94,8 @@ eqho-due-diligence/
 ## 💰 Investment Details
 
 - **Raising**: $500K seed round
-- **Pre-Money Valuation**: $4.0M
-- **Post-Money Valuation**: $4.5M
+- **Pre-Money Valuation**: $15.0M
+- **Post-Money Valuation**: $15.5M
 - **Runway to Breakeven**: 6 months
 - **Minimum Investment**: $50K
 
@@ -116,64 +116,50 @@ STRIPE_SECRET_KEY=sk_test_...
 STRIPE_PUBLIC_KEY=pk_test_...
 ```
 
-## 🌐 Development
+## 📚 Documentation
 
-The app runs on **http://localhost:5173** by default.
+Detailed documentation is available in the `/docs` folder:
 
-### Navigation
-- Use arrow keys or Previous/Next buttons
-- Slide indicators at bottom for quick navigation
-- 6 total slides covering all aspects of the investment
+- [Architecture](./docs/architecture.md) - System design and data flow
+- [Setup](./docs/setup.md) - Development environment configuration
+- [Deployment](./docs/deployment.md) - Production deployment guides
+- [Stripe Integration](./docs/stripe.md) - Metrics and API integration
+- [API Reference](./docs/api-reference.md) - Backend endpoints
 
-### Making Changes
-- Edit `src/App.jsx` for content updates
-- Vite hot-reload will update automatically
-- All financial data is in the slide data structure
+## 🌐 Navigation
 
-## 📦 Dependencies
+- **Dashboard View**: Bento grid overview of all slides
+- **Slide View**: Full presentation mode with arrow key navigation
+- **Sidebar**: Collapsible navigation (admin feature)
+- **Quick Investor View**: Curated 5-slide subset (feature flag)
 
-### Core
-- `react` + `react-dom` - UI framework
-- `vite` - Build tool
-- `@vitejs/plugin-react` - Vite React plugin
+### Feature Flags
 
-### UI Components
-- `@radix-ui/*` - Headless UI primitives
-- `lucide-react` - Icon library
-- `tailwindcss` - Styling
-- `class-variance-authority` - Component variants
-- `clsx` + `tailwind-merge` - ClassName utilities
+The app uses feature flags for runtime configuration:
+
+| Flag | Description |
+|------|-------------|
+| `show_sidebar` | Collapsible sidebar navigation |
+| `quick_investor_view` | Show curated 5-slide investor deck |
+| `show_admin_controls` | Layout editing tools |
+
+See [featureFlags.js](./src/lib/featureFlags.js) for full list.
 
 ## 🚢 Deployment
 
-### Build for Production
 ```bash
+# Build for production
 npm run build
+
+# Deploy to Vercel
+vercel --prod
 ```
 
-This creates an optimized production build in `dist/`.
-
-### Deploy Options
-- **Vercel**: `vercel deploy`
-- **Netlify**: Drag & drop `dist/` folder
-- **GitHub Pages**: Configure with Vite base path
-- **Any static host**: Upload `dist/` contents
-
-## 📝 Notes
-
-### Data Segmentation
-- All metrics are **TowPilot-specific** (customers tagged with "tow")
-- Separate product lines tracked independently
-- Stripe integration available for real-time data
-
-### Customization
-- Update slide content in `slides` array in `App.jsx`
-- Modify theme in `tailwind.config.js`
-- Adjust component styles in `src/components/ui/`
+See [deployment docs](./docs/deployment.md) for detailed guides.
 
 ## 🤝 Contributing
 
-This is a private investor deck. Changes should be reviewed before deployment.
+This is a private investor deck. See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## 📄 License
 

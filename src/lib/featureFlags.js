@@ -21,6 +21,13 @@ export const DEFAULT_FLAGS = {
   show_api_errors: false,        // Show API error details to users
   show_debug_info: false,        // Show debug panels and console info
   
+  // Navigation controls
+  show_sidebar: false,           // Show sidebar navigation panel
+  sidebar_default_open: false,   // Sidebar open by default (admin override)
+  
+  // Investor view controls
+  quick_investor_view: false,    // Show curated 5-slide subset for quick consumption
+  
   // Feature toggles
   enable_audit_log: true,        // Log user actions to audit table
   enable_data_export: true,      // Allow data export functionality
@@ -43,6 +50,9 @@ export const FLAG_DESCRIPTIONS = {
   show_drill_downs: 'Show drill-down buttons on metric cards',
   show_api_errors: 'Display detailed API error messages to users',
   show_debug_info: 'Show debug panels and verbose console logging',
+  show_sidebar: 'Show collapsible sidebar navigation panel',
+  sidebar_default_open: 'Sidebar expanded by default (admin override applies)',
+  quick_investor_view: 'Show curated 5-slide subset for quick investor consumption',
   enable_audit_log: 'Log user actions to the audit_log table',
   enable_data_export: 'Allow users to export data (Excel, PDF)',
   enable_snapshot_restore: 'Allow restoring dashboard from snapshots',
@@ -61,6 +71,8 @@ export const ADMIN_OVERRIDE_FLAGS = [
   'show_api_errors',
   'show_debug_info',
   'enable_snapshot_restore',
+  'show_sidebar',
+  'sidebar_default_open',
 ];
 
 /**

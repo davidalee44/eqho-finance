@@ -4,6 +4,7 @@ import FinancialReport from '@/components/FinancialReport';
 import { MaintenanceBanner, MaintenanceOverlay } from '@/components/MaintenanceBanner';
 import { MRRMetrics } from '@/components/MRRMetrics';
 import { OctoberRevenueBreakdown } from '@/components/OctoberRevenueBreakdown';
+import { Sidebar } from '@/components/Sidebar';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,14 +20,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ValidatedMetrics } from '@/components/ValidatedMetrics';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, ArrowUp, BarChart, ChevronLeft, ChevronRight, Code, DollarSign, GripVertical, LayoutGrid, Lock, Presentation, Target, TrendingUp, Users, Zap } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { AlertTriangle, ArrowUp, BarChart, ChevronLeft, ChevronRight, Code, DollarSign, GripVertical, LayoutGrid, Lock, Menu, Presentation, Target, TrendingUp, Users, Zap } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { BentoDashboard } from './components/BentoDashboard';
 import { Footer } from './components/Footer';
 import UserProfile from './components/UserProfile';
 import { useAuth } from './contexts/AuthContext';
 import { useDraggableCards } from './hooks/useDraggableCards';
 import { debouncedSaveLayout } from './services/layoutService';
+
+// Indices of slides to show in quick investor view (curated 5-slide subset)
+const QUICK_INVESTOR_SLIDE_INDICES = [0, 4, 5, 6, 10]; // Executive Summary, Growth Strategy, Investment Terms, 36-Month Projection, AI Financial Report
 
 // Storage key for financial model variables
 const STORAGE_KEY = 'financial-model-variables';
@@ -1581,8 +1585,8 @@ const App = ({ userProfile }) => {
   // Keyboard navigation
   React.useEffect(() => {
     const handleKeyPress = (e) => {
-      if (e.key === 'ArrowRight') nextSlide();
-      if (e.key === 'ArrowLeft') prevSlide();
+      if (e.key === 'ArrowRight') nextDisplaySlide();
+      if (e.key === 'ArrowLeft') prevDisplaySlide();
     };
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
@@ -3450,8 +3454,43 @@ const App = ({ userProfile }) => {
     }
   ];
 
+  // Filter slides based on quick_investor_view flag
+  // useMemo to avoid recalculating on every render
+  const displaySlides = useMemo(() => {
+    if (flags.quick_investor_view && !isAdmin) {
+      return slides.filter((_, index) => QUICK_INVESTOR_SLIDE_INDICES.includes(index));
+    }
+    return slides;
+  }, [flags.quick_investor_view, isAdmin, slides]);
+
+  // Navigation functions using displaySlides
+  const nextDisplaySlide = () => setCurrentSlide((prev) => Math.min(prev + 1, displaySlides.length - 1));
+  const prevDisplaySlide = () => setCurrentSlide((prev) => Math.max(prev - 1, 0));
+  const goToDisplaySlide = (index) => {
+    setCurrentSlide(index);
+    setViewMode('slide');
+  };
+
+  // Ensure currentSlide is within bounds when displaySlides changes
+  useEffect(() => {
+    if (currentSlide >= displaySlides.length) {
+      setCurrentSlide(Math.max(0, displaySlides.length - 1));
+    }
+  }, [displaySlides.length, currentSlide]);
+
   return (
-    <div className="min-h-screen bg-background flex flex-col pb-12">
+    <div className="min-h-screen bg-background flex pb-12">
+      {/* Sidebar Navigation */}
+      <Sidebar
+        slides={displaySlides}
+        currentSlideIndex={currentSlide}
+        onSlideClick={goToDisplaySlide}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
       {/* Maintenance/Read-only banner (admin still sees it but can proceed) */}
       {flags.maintenance_mode && isAdmin && (
         <MaintenanceBanner 
@@ -3515,7 +3554,7 @@ const App = ({ userProfile }) => {
               </>
             )}
             
-            {viewMode === 'slide' && (
+              {viewMode === 'slide' && (
               <>
                 {!isAdmin && editMode && (
                   <Badge variant="outline" className="text-xs">
@@ -3524,9 +3563,12 @@ const App = ({ userProfile }) => {
                   </Badge>
                 )}
                 <span className="text-sm text-muted-foreground">
-                  {currentSlide + 1} / {slides.length}
+                  {currentSlide + 1} / {displaySlides.length}
                 </span>
-                <Progress value={(currentSlide + 1) / slides.length * 100} className="w-32" />
+                <Progress value={(currentSlide + 1) / displaySlides.length * 100} className="w-32" />
+                {flags.quick_investor_view && !isAdmin && (
+                  <Badge variant="secondary" className="text-xs">Quick View</Badge>
+                )}
               </>
             )}
           </div>
@@ -3537,8 +3579,8 @@ const App = ({ userProfile }) => {
       {viewMode === 'dashboard' ? (
         <div className="flex-1 container mx-auto px-4 py-6">
           <BentoDashboard 
-            slides={slides}
-            onSlideClick={goToSlide}
+            slides={displaySlides}
+            onSlideClick={goToDisplaySlide}
             currentSlideIndex={currentSlide}
           />
         </div>
@@ -3550,8 +3592,8 @@ const App = ({ userProfile }) => {
           >
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-xl md:text-2xl font-bold">{slides[currentSlide].title}</h2>
-                <p className="text-sm text-muted-foreground">{slides[currentSlide].subtitle}</p>
+                <h2 className="text-xl md:text-2xl font-bold">{displaySlides[currentSlide]?.title}</h2>
+                <p className="text-sm text-muted-foreground">{displaySlides[currentSlide]?.subtitle}</p>
               </div>
               {editMode && isAdmin && (
                 <Badge variant="secondary" className="gap-2 hidden md:flex">
@@ -3572,7 +3614,7 @@ const App = ({ userProfile }) => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={prevSlide}
+                onClick={prevDisplaySlide}
                 disabled={currentSlide === 0}
                 className={`fixed left-4 top-1/2 -translate-y-1/2 w-16 h-16 rounded-full 
                   shadow-2xl transition-all z-20 border-2
@@ -3588,11 +3630,11 @@ const App = ({ userProfile }) => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={nextSlide}
-                disabled={currentSlide === slides.length - 1}
+                onClick={nextDisplaySlide}
+                disabled={currentSlide === displaySlides.length - 1}
                 className={`fixed right-4 top-1/2 -translate-y-1/2 w-16 h-16 rounded-full 
                   shadow-2xl transition-all z-20 border-2
-                  ${currentSlide === slides.length - 1
+                  ${currentSlide === displaySlides.length - 1
                     ? 'opacity-30 cursor-not-allowed bg-background/60'
                     : 'bg-background/95 hover:bg-primary hover:text-primary-foreground hover:scale-110 hover:shadow-3xl border-primary/20'
                   }`}
@@ -3601,7 +3643,7 @@ const App = ({ userProfile }) => {
                 <ChevronRight className="w-10 h-10" />
               </Button>
 
-              {slides[currentSlide].content}
+              {displaySlides[currentSlide]?.content}
             </div>
           </div>
 
@@ -3611,7 +3653,7 @@ const App = ({ userProfile }) => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={prevSlide}
+                onClick={prevDisplaySlide}
                 disabled={currentSlide === 0}
               >
                 <ChevronLeft className="w-4 h-4 mr-1" />
@@ -3620,10 +3662,10 @@ const App = ({ userProfile }) => {
               
               <div className="flex items-center gap-4">
                 <div className="flex gap-1">
-                  {slides.map((_, index) => (
+                  {displaySlides.map((_, index) => (
                     <button
                       key={index}
-                      onClick={() => goToSlide(index)}
+                      onClick={() => goToDisplaySlide(index)}
                       className={cn(
                         "w-2 h-2 rounded-full transition-all",
                         currentSlide === index 
@@ -3635,15 +3677,15 @@ const App = ({ userProfile }) => {
                 </div>
                 
                 <span className="text-sm text-muted-foreground font-medium">
-                  Page {currentSlide + 1} of {slides.length}
+                  Page {currentSlide + 1} of {displaySlides.length}
                 </span>
               </div>
               
               <Button
                 variant="outline"
                 size="sm"
-                onClick={nextSlide}
-                disabled={currentSlide === slides.length - 1}
+                onClick={nextDisplaySlide}
+                disabled={currentSlide === displaySlides.length - 1}
               >
                 Next
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -3655,6 +3697,8 @@ const App = ({ userProfile }) => {
       
       {/* Fixed Footer */}
       <Footer />
+      </div>
+      {/* End Main Content Area wrapper */}
     </div>
   );
 };
