@@ -26,14 +26,40 @@ services:
     environment:
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
       - MONGODB_URL=mongodb://admin:eqho_secure_password_change_me@mongodb:27017/eqho_metrics?authSource=admin
       - CACHE_TTL=300
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
     depends_on:
       - mongodb
     networks:
       - eqho-network
     volumes:
       - ./backend:/app
+
+  django-users:
+    build: ./django_users
+    container_name: eqho-django-users
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      - SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-change-in-production}
+      - DEBUG=${DJANGO_DEBUG:-False}
+      - ALLOWED_HOSTS=localhost,127.0.0.1,django-users
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=${SUPABASE_DB_NAME:-postgres}
+      - DB_USER=${SUPABASE_DB_USER:-postgres}
+      - DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - DB_HOST=${SUPABASE_DB_HOST}
+      - DB_PORT=${SUPABASE_DB_PORT:-5432}
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+    networks:
+      - eqho-network
 
 volumes:
   mongodb_data:
@@ -44,4 +70,3 @@ volumes:
 networks:
   eqho-network:
     driver: bridge
-
