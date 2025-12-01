@@ -54,7 +54,7 @@ class EmailService:
                 <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
                     <h3 style="color: #667eea; margin-top: 0;">Investment Opportunity Highlights:</h3>
                     <ul style="color: #555;">
-                        <li><strong>$500K Seed Round</strong> | $4M pre-money valuation</li>
+                        <li><strong>$500K Seed Round</strong> | $15M pre-money valuation</li>
                         <li><strong>TowPilot Product:</strong> $831 CAC, $14.1K LTV, 17x ratio</li>
                         <li><strong>Growth:</strong> 10% M/M to 6-month breakeven</li>
                         <li><strong>Margins:</strong> 69% → 82% gross margin trajectory</li>
