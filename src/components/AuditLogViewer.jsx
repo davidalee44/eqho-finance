@@ -19,7 +19,7 @@ export function AuditLogViewer() {
   const [filters, setFilters] = useState({
     page: 1,
     pageSize: 50,
-    actionType: '',
+    actionType: 'all',
     userId: '',
     startDate: '',
     endDate: '',
@@ -185,7 +185,7 @@ export function AuditLogViewer() {
                     <SelectValue placeholder="All actions" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All actions</SelectItem>
+                    <SelectItem value="all">All actions</SelectItem>
                     {Object.values(ACTION_TYPES).map((type) => (
                       <SelectItem key={type} value={type}>
                         {type.replace('_', ' ')}
@@ -246,7 +246,7 @@ export function AuditLogViewer() {
                 onClick={() => setFilters({
                   page: 1,
                   pageSize: 50,
-                  actionType: '',
+                  actionType: 'all',
                   userId: '',
                   startDate: '',
                   endDate: '',
