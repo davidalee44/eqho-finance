@@ -1980,107 +1980,55 @@ const App = ({ userProfile }) => {
       subtitle: "Industry Comparison & Competitive Analysis",
       content: (
         <div className="space-y-4 h-full">
-          <div className="grid grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">SaaS Industry Benchmark Comparison</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs">Metric</TableHead>
-                      <TableHead className="text-xs text-right">Eqho</TableHead>
-                      <TableHead className="text-xs text-right">Top Quartile</TableHead>
-                      <TableHead className="text-xs text-right">Median</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody className="text-xs">
-                    <TableRow>
-                      <TableCell>Annual Growth Rate</TableCell>
-                      <TableCell className="text-right font-medium text-green-600">250%+</TableCell>
-                      <TableCell className="text-right">75%</TableCell>
-                      <TableCell className="text-right">25%</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>Burn Multiple</TableCell>
-                      <TableCell className="text-right font-medium text-green-600">1.2x</TableCell>
-                      <TableCell className="text-right">1.5x</TableCell>
-                      <TableCell className="text-right">1.6x</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>Gross Margin</TableCell>
-                      <TableCell className="text-right font-medium text-green-600">69%</TableCell>
-                      <TableCell className="text-right">80%</TableCell>
-                      <TableCell className="text-right">75%</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>TowPilot CAC Payback</TableCell>
-                      <TableCell className="text-right font-medium text-green-600">1.8 mo</TableCell>
-                      <TableCell className="text-right">12 mo</TableCell>
-                      <TableCell className="text-right">16 mo</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>S&M % of Revenue</TableCell>
-                      <TableCell className="text-right font-medium text-orange-600">8.6%</TableCell>
-                      <TableCell className="text-right">35%</TableCell>
-                      <TableCell className="text-right">47%</TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">AI-Native Competitive Advantages</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="p-2 border rounded-lg">
-                    <div className="flex justify-between items-center mb-1">
-                      <p className="text-xs font-medium">QA Accuracy vs Human</p>
-                      <Badge variant="outline">93%</Badge>
-                    </div>
-                    <Progress value={93} className="h-1.5" />
-                  </div>
-                  
-                  <div className="p-2 border rounded-lg">
-                    <div className="flex justify-between items-center mb-1">
-                      <p className="text-xs font-medium">Cost Reduction Achieved</p>
-                      <Badge variant="outline">95%</Badge>
-                    </div>
-                    <Progress value={95} className="h-1.5" />
-                  </div>
-                  
-                  <div className="p-2 border rounded-lg">
-                    <div className="flex justify-between items-center mb-1">
-                      <p className="text-xs font-medium">Platform Uptime SLA</p>
-                      <Badge variant="outline">99.9%</Badge>
-                    </div>
-                    <Progress value={99.9} className="h-1.5" />
-                  </div>
-
-                  <Separator />
-                  
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div>
-                      <p className="text-lg font-semibold">3</p>
-                      <p className="text-xs text-muted-foreground">Industry Verticals</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-semibold">26</p>
-                      <p className="text-xs text-muted-foreground">Team Members</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-semibold">15yr</p>
-                      <p className="text-xs text-muted-foreground">Founder History</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">SaaS Industry Benchmark Comparison</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Metric</TableHead>
+                    <TableHead className="text-xs text-right">Eqho</TableHead>
+                    <TableHead className="text-xs text-right">Top Quartile</TableHead>
+                    <TableHead className="text-xs text-right">Median</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="text-xs">
+                  <TableRow>
+                    <TableCell>Annual Growth Rate</TableCell>
+                    <TableCell className="text-right font-medium text-green-600">250%+</TableCell>
+                    <TableCell className="text-right">75%</TableCell>
+                    <TableCell className="text-right">25%</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>Burn Multiple</TableCell>
+                    <TableCell className="text-right font-medium text-green-600">1.2x</TableCell>
+                    <TableCell className="text-right">1.5x</TableCell>
+                    <TableCell className="text-right">1.6x</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>Gross Margin</TableCell>
+                    <TableCell className="text-right font-medium text-green-600">69%</TableCell>
+                    <TableCell className="text-right">80%</TableCell>
+                    <TableCell className="text-right">75%</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>TowPilot CAC Payback</TableCell>
+                    <TableCell className="text-right font-medium text-green-600">1.8 mo</TableCell>
+                    <TableCell className="text-right">12 mo</TableCell>
+                    <TableCell className="text-right">16 mo</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>S&M % of Revenue</TableCell>
+                    <TableCell className="text-right font-medium text-orange-600">8.6%</TableCell>
+                    <TableCell className="text-right">35%</TableCell>
+                    <TableCell className="text-right">47%</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader className="pb-3">
@@ -2465,19 +2413,19 @@ const App = ({ userProfile }) => {
                         <TableCell className="text-right">$8,027</TableCell>
                         <TableCell className="text-right">74%</TableCell>
                       </TableRow>
-                      <TableRow className="bg-green-50">
-                        <TableCell className="font-medium">Month 6 (Apr 2026) - Breakeven</TableCell>
-                        <TableCell className="text-right font-semibold">$1.93M</TableCell>
+                      <TableRow>
+                        <TableCell className="font-medium">Month 6 (Apr 2026)</TableCell>
+                        <TableCell className="text-right">$1.93M</TableCell>
                         <TableCell className="text-right">$161K</TableCell>
                         <TableCell className="text-right">47</TableCell>
                         <TableCell className="text-right">$8,027</TableCell>
                         <TableCell className="text-right">78%</TableCell>
                       </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Month 9 (Jul 2026)</TableCell>
-                        <TableCell className="text-right">$2.57M</TableCell>
-                        <TableCell className="text-right">$214K</TableCell>
-                        <TableCell className="text-right">62</TableCell>
+                      <TableRow className="bg-green-50">
+                        <TableCell className="font-medium">Month 10 (Aug 2026) - Breakeven</TableCell>
+                        <TableCell className="text-right font-semibold">$2.78M</TableCell>
+                        <TableCell className="text-right">$232K</TableCell>
+                        <TableCell className="text-right">68</TableCell>
                         <TableCell className="text-right">$8,027</TableCell>
                         <TableCell className="text-right">80%</TableCell>
                       </TableRow>
@@ -2535,8 +2483,8 @@ const App = ({ userProfile }) => {
                     <div>
                       <p className="text-xs font-medium mb-2">Path to Profitability</p>
                       <div className="space-y-1 text-xs text-muted-foreground">
-                        <p>• Breakeven: Month 6 (April 2026)</p>
-                        <p>• Cumulative burn: ~$430K</p>
+                        <p>• Breakeven: Month 10 (August 2026)</p>
+                        <p>• Cumulative burn: ~$449K</p>
                         <p>• Strong profit ramp post-breakeven</p>
                       </div>
                     </div>
