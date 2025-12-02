@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Eye,
   FileText,
   LayoutDashboard,
   Menu,
@@ -16,6 +17,7 @@ import {
   ScrollText,
   Settings,
   Users,
+  UserCog,
   X,
 } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
@@ -28,18 +30,19 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from './ui/collapsible';
+import { ImpersonationSelector } from './ImpersonationSelector';
 
 const SIDEBAR_STORAGE_KEY = 'eqho_sidebar_open';
 const INVESTOR_SLIDES_OPEN_KEY = 'eqho_investor_slides_open';
 const ADMIN_SLIDES_OPEN_KEY = 'eqho_admin_slides_open';
 
 // Slide indices that are investor-facing (polished, forward-looking)
-// Based on slide titles: Executive Summary, Market Position, Business Model, Growth Strategy, Investment Terms, 36-Month Projection
-const INVESTOR_SLIDE_INDICES = [0, 2, 3, 4, 5, 6];
+// Based on slide titles: Executive Summary, Growth Strategy, Investment Terms, 36-Month Projection
+const INVESTOR_SLIDE_INDICES = [0, 4, 5, 6];
 
-// Admin/internal slides (detailed analysis, internal data)
-// Financial Performance, SaaS Metrics, Interactive Model, Team & Compensation, AI Financial Report
-const ADMIN_SLIDE_INDICES = [1, 7, 8, 9, 10];
+// Admin/internal slides (detailed analysis, internal data, drafts)
+// Financial Performance, Market Position (draft), Business Model (draft), SaaS Metrics, Interactive Model, Team & Compensation, AI Financial Report
+const ADMIN_SLIDE_INDICES = [1, 2, 3, 7, 8, 9, 10];
 
 /**
  * Collapsible Sidebar Navigation
@@ -58,7 +61,9 @@ export const Sidebar = ({
   viewMode = 'dashboard',
   onViewModeChange,
 }) => {
-  const { isAdmin } = useAuth();
+  // isAdmin = real admin status (for showing impersonation controls)
+  // effectiveIsAdmin = false when impersonating (for hiding admin-only features)
+  const { isAdmin, effectiveIsAdmin, isImpersonating } = useAuth();
   const { flags, refresh: refreshFlags } = useFeatureFlags();
   const navigate = useNavigate();
   const location = useLocation();
@@ -98,13 +103,13 @@ export const Sidebar = ({
 
   // Update default state when admin status changes
   useEffect(() => {
-    if (isAdmin && flags.sidebar_default_open) {
+    if (effectiveIsAdmin && flags.sidebar_default_open) {
       const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
       if (stored === null) {
         setIsOpen(true);
       }
     }
-  }, [isAdmin, flags.sidebar_default_open]);
+  }, [effectiveIsAdmin, flags.sidebar_default_open]);
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 
@@ -145,6 +150,12 @@ export const Sidebar = ({
       badge: null,
     },
     {
+      icon: UserCog,
+      label: 'Team & Compensation',
+      path: '/admin/team',
+      badge: null,
+    },
+    {
       icon: Plug,
       label: 'Integrations',
       path: '/admin/integrations',
@@ -153,12 +164,14 @@ export const Sidebar = ({
   ];
 
   // Check if we should show sidebar based on feature flag
-  if (!flags.show_sidebar && !isAdmin) {
+  if (!flags.show_sidebar && !effectiveIsAdmin) {
     return null;
   }
 
   // Render a slide button
-  const renderSlideButton = (slide, displayIndex) => (
+  // For investors: show sequential display numbers (1, 2, 3, 4)
+  // For admins: show original indices so they can reference the actual slide array
+  const renderSlideButton = (slide, displayIndex, showSequentialNumber = false) => (
     <button
       key={slide.originalIndex}
       onClick={() => onSlideClick?.(slide.originalIndex)}
@@ -177,7 +190,7 @@ export const Sidebar = ({
           ? 'bg-primary text-primary-foreground'
           : 'bg-muted'
       )}>
-        {slide.originalIndex + 1}
+        {showSequentialNumber ? displayIndex + 1 : slide.originalIndex + 1}
       </span>
       <span className="truncate">{slide.title}</span>
     </button>
@@ -326,13 +339,13 @@ export const Sidebar = ({
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-1">
                   <nav className="space-y-0.5 pl-2 border-l-2 border-primary/20 ml-2">
-                    {investorSlides.map((slide, idx) => renderSlideButton(slide, idx))}
+                    {investorSlides.map((slide, idx) => renderSlideButton(slide, idx, !effectiveIsAdmin))}
                   </nav>
                 </CollapsibleContent>
               </Collapsible>
 
-              {/* Admin Slides Section - Only show to admins */}
-              {isAdmin && adminSlides.length > 0 && (
+              {/* Admin Slides Section - Only show to admins (hidden when impersonating) */}
+              {effectiveIsAdmin && adminSlides.length > 0 && (
                 <Collapsible 
                   open={adminSlidesOpen} 
                   onOpenChange={setAdminSlidesOpen}
@@ -380,8 +393,8 @@ export const Sidebar = ({
           )}
         </div>
 
-        {/* Admin Section */}
-        {isAdmin && (
+        {/* Admin Section - Hidden when impersonating */}
+        {effectiveIsAdmin && (
           <>
             <Separator />
             <div className={cn('p-3', !isOpen && 'hidden md:block')}>
@@ -391,6 +404,25 @@ export const Sidebar = ({
                     Admin Tools
                   </p>
                   <nav className="space-y-1">
+                    {/* Impersonation Button - Top of admin tools */}
+                    <ImpersonationSelector
+                      trigger={
+                        <button
+                          className={cn(
+                            'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
+                            'hover:bg-amber-100 hover:text-amber-900 dark:hover:bg-amber-900/20 dark:hover:text-amber-400',
+                            'flex items-center gap-2 text-amber-600 dark:text-amber-500',
+                            'border border-amber-200 dark:border-amber-800'
+                          )}
+                        >
+                          <Eye className="h-4 w-4 flex-shrink-0" />
+                          <span className="truncate">View As Investor</span>
+                        </button>
+                      }
+                    />
+                    
+                    <Separator className="my-2" />
+                    
                     {adminNavItems.map((item) => {
                       const Icon = item.icon;
                       const isActive = location.pathname === item.path;
@@ -449,6 +481,20 @@ export const Sidebar = ({
                 </>
               ) : (
                 <div className="flex flex-col gap-1 items-center">
+                  {/* Impersonation Button - Collapsed view */}
+                  <ImpersonationSelector
+                    trigger={
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-100"
+                        title="View As Investor"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    }
+                  />
+                  <Separator className="my-1 w-8" />
                   {adminNavItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = location.pathname === item.path;
