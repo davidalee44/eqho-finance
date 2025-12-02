@@ -10,20 +10,48 @@ export async function generateFinancialInsights(financialData) {
   const { baseline, projections, targets, milestones } = financialData;
   
   // Calculate key metrics
-  const totalBurn = projections.reduce((sum, m) => sum + Math.min(0, m.noi), 0);
+  // Total operating burn = sum of negative NOI months
+  const totalOperatingBurn = projections.reduce((sum, m) => sum + Math.min(0, m.noi), 0);
+
+  // Actual cash burn = starting cash - lowest cash point (accounts for recovery)
+  const cashPositions = projections.map(m => m.cash);
+  const lowestCash = Math.min(...cashPositions);
+  const actualBurn = targets.startingCash - lowestCash;
+
+  // Use actual burn for display (more accurate representation)
+  const totalBurn = actualBurn > 0 ? actualBurn : Math.abs(totalOperatingBurn);
+
   const avgMonthlyGrowth = projections.slice(0, 3).reduce((sum, m, i) => {
     if (i === 0) return 0;
     const prevRev = projections[i - 1].revenue;
     return sum + ((m.revenue - prevRev) / prevRev * 100);
   }, 0) / 2;
-  
-  const runway = Math.floor(targets.startingCash / Math.abs(totalBurn / 12));
+
+  // Calculate runway based on burn rate before breakeven
+  const breakevenIdx = projections.findIndex(m => m.noi > 0);
+  let runway;
+  if (breakevenIdx === -1) {
+    // No breakeven - use average monthly burn from all months
+    const avgBurn = Math.abs(totalOperatingBurn / 12);
+    runway = avgBurn > 0 ? Math.floor(targets.startingCash / avgBurn) : 99;
+  } else if (breakevenIdx === 0) {
+    // Already profitable from month 1
+    runway = 99;
+  } else {
+    // Calculate actual burn before breakeven
+    const burnBeforeBreakeven = projections.slice(0, breakevenIdx)
+      .reduce((sum, m) => sum + Math.min(0, m.noi), 0);
+    const monthsToBreakeven = breakevenIdx;
+    const avgMonthlyBurn = Math.abs(burnBeforeBreakeven / monthsToBreakeven);
+    runway = avgMonthlyBurn > 0 ? Math.floor(targets.startingCash / avgMonthlyBurn) : 99;
+  }
+
   const exitMRR = projections[11].revenue;
   
-  // Determine risk level
+  // Determine risk level based on burn amount (now a positive value)
   let riskLevel = 'low';
-  if (totalBurn < -450000) riskLevel = 'high';
-  else if (totalBurn < -350000) riskLevel = 'moderate';
+  if (totalBurn > 450000) riskLevel = 'high';
+  else if (totalBurn > 350000) riskLevel = 'moderate';
   
   // Generate recommendations based on analysis
   const recommendations = [];
@@ -106,11 +134,11 @@ export async function generateFinancialInsights(financialData) {
     });
   }
   
-  if (totalBurn < -450000) {
+  if (totalBurn > 450000) {
     risks.push({
       level: 'high',
       title: 'High Burn Rate',
-      description: `Total burn of $${Math.abs(totalBurn / 1000).toFixed(0)}K reduces runway. Monitor spending closely.`
+      description: `Total burn of $${(totalBurn / 1000).toFixed(0)}K reduces runway. Monitor spending closely.`
     });
   }
   
@@ -149,7 +177,7 @@ export async function generateFinancialInsights(financialData) {
   
   return {
     summary: {
-      totalBurn: Math.abs(totalBurn),
+      totalBurn, // Already a positive value representing total cash burned
       runway,
       exitMRR,
       riskLevel,
