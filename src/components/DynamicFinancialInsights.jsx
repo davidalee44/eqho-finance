@@ -2,7 +2,18 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2 } from 'lucide-react';
+import {
+  Loader2,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Clock,
+  Target,
+  AlertTriangle,
+  Lightbulb,
+  ShieldAlert,
+  Rocket
+} from 'lucide-react';
 import { generateFinancialInsights } from '@/lib/generateFinancialInsights';
 
 /**
@@ -70,19 +81,38 @@ export const DynamicFinancialInsights = ({ projections, variables, breakeven, cf
 
   const generateFallbackInsights = () => {
     // Fallback insights based on calculations
-    const totalBurn = projections.reduce((sum, m) => sum + Math.min(0, m.noi), 0);
+    // Calculate actual burn = starting cash - lowest cash point
+    const lowestCash = Math.min(...projections.map(m => m.cash));
+    const totalBurn = variables.startingCash - lowestCash;
+
     const avgMonthlyGrowth = projections.slice(0, 3).reduce((sum, m, i) => {
       if (i === 0) return 0;
       const prevRev = projections[i - 1].revenue;
       return sum + ((m.revenue - prevRev) / prevRev * 100);
     }, 0) / 2;
 
+    // Calculate runway based on burn before breakeven
+    const breakevenIdx = projections.findIndex(m => m.noi > 0);
+    let runway;
+    if (breakevenIdx === -1) {
+      const totalOperatingBurn = projections.reduce((sum, m) => sum + Math.min(0, m.noi), 0);
+      const avgBurn = Math.abs(totalOperatingBurn / 12);
+      runway = avgBurn > 0 ? Math.floor(variables.startingCash / avgBurn) : 99;
+    } else if (breakevenIdx === 0) {
+      runway = 99;
+    } else {
+      const burnBeforeBreakeven = projections.slice(0, breakevenIdx)
+        .reduce((sum, m) => sum + Math.min(0, m.noi), 0);
+      const avgMonthlyBurn = Math.abs(burnBeforeBreakeven / breakevenIdx);
+      runway = avgMonthlyBurn > 0 ? Math.floor(variables.startingCash / avgMonthlyBurn) : 99;
+    }
+
     return {
       summary: {
-        totalBurn: Math.abs(totalBurn),
-        runway: Math.floor(variables.startingCash / Math.abs(totalBurn / 12)),
+        totalBurn: totalBurn > 0 ? totalBurn : 0,
+        runway,
         exitMRR: projections[11].revenue,
-        riskLevel: totalBurn > -400000 ? 'moderate' : 'high'
+        riskLevel: totalBurn > 400000 ? 'high' : 'moderate'
       },
       recommendations: [
         {
@@ -143,17 +173,27 @@ export const DynamicFinancialInsights = ({ projections, variables, breakeven, cf
     };
   };
 
+  // Format currency helper
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(Math.abs(amount));
+  };
+
   if (loading) {
     return (
       <Card className="border-2 border-blue-200">
         <CardHeader className="bg-blue-50/50">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Generating Dynamic Insights...
+          <CardTitle className="text-base flex items-center gap-2">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            Generating AI Analysis...
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6 text-center text-sm text-muted-foreground">
-          Analyzing financial model and generating recommendations...
+        <CardContent className="p-8 text-center">
+          <p className="text-muted-foreground">Analyzing financial projections and generating insights...</p>
         </CardContent>
       </Card>
     );
@@ -162,10 +202,13 @@ export const DynamicFinancialInsights = ({ projections, variables, breakeven, cf
   if (error && !insights) {
     return (
       <Card className="border-2 border-red-200">
-        <CardHeader className="bg-red-50/50">
-          <CardTitle className="text-sm text-red-900">Error Loading Insights</CardTitle>
+        <CardHeader className="bg-red-50/50 flex flex-row items-center justify-between">
+          <CardTitle className="text-base text-red-900 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            Error Loading Insights
+          </CardTitle>
         </CardHeader>
-        <CardContent className="p-6 text-sm text-red-700">
+        <CardContent className="p-6 text-red-700">
           {error}
         </CardContent>
       </Card>
@@ -174,57 +217,119 @@ export const DynamicFinancialInsights = ({ projections, variables, breakeven, cf
 
   if (!insights) return null;
 
+  const getRiskBadgeVariant = (level) => {
+    switch (level) {
+      case 'high': return 'destructive';
+      case 'moderate': return 'default';
+      default: return 'secondary';
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      {/* AI-Generated Summary */}
-      <Card className="border-2 border-blue-200">
-        <CardHeader className="bg-blue-50/50">
-          <CardTitle className="text-sm text-blue-900">AI-Generated Financial Analysis</CardTitle>
+    <div className="space-y-6">
+      {/* AI-Generated Summary - Bento Grid Layout */}
+      <Card className="border-2">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-base font-medium flex items-center gap-2">
+            <Target className="h-5 w-5 text-blue-600" />
+            AI Financial Analysis
+          </CardTitle>
+          <Badge variant="outline" className="text-xs">
+            Auto-generated
+          </Badge>
         </CardHeader>
-        <CardContent className="space-y-4 pt-4">
-          <div className="grid grid-cols-4 gap-3">
-            <div className="p-3 rounded-lg bg-white/80 border border-blue-200">
-              <p className="text-blue-600 font-medium mb-1 text-xs">Total Burn</p>
-              <p className="font-bold text-blue-900 text-lg">${(insights.summary.totalBurn / 1000).toFixed(0)}K</p>
-            </div>
-            <div className="p-3 rounded-lg bg-white/80 border border-purple-200">
-              <p className="text-purple-600 font-medium mb-1 text-xs">Runway</p>
-              <p className="font-bold text-purple-900 text-lg">{insights.summary.runway} mo</p>
-            </div>
-            <div className="p-3 rounded-lg bg-white/80 border border-green-200">
-              <p className="text-green-600 font-medium mb-1 text-xs">Exit MRR</p>
-              <p className="font-bold text-green-900 text-lg">${(insights.summary.exitMRR / 1000).toFixed(0)}K</p>
-            </div>
-            <div className="p-3 rounded-lg bg-white/80 border border-amber-200">
-              <p className="text-amber-600 font-medium mb-1 text-xs">Risk Level</p>
-              <Badge variant={insights.summary.riskLevel === 'high' ? 'destructive' : 'default'} className="text-xs">
-                {insights.summary.riskLevel}
-              </Badge>
-            </div>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Total Burn Card */}
+            <Card className="border">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Burn</CardTitle>
+                <TrendingDown className="h-4 w-4 text-destructive" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(insights.summary.totalBurn)}</div>
+                <p className="text-xs text-muted-foreground mt-1">To lowest cash point</p>
+              </CardContent>
+            </Card>
+
+            {/* Runway Card */}
+            <Card className="border">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Runway</CardTitle>
+                <Clock className="h-4 w-4 text-purple-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-600">
+                  {insights.summary.runway >= 99 ? '12+' : insights.summary.runway} months
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">At current burn rate</p>
+              </CardContent>
+            </Card>
+
+            {/* Exit MRR Card */}
+            <Card className="border">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Exit MRR</CardTitle>
+                <TrendingUp className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{formatCurrency(insights.summary.exitMRR)}</div>
+                <p className="text-xs text-muted-foreground mt-1">Year-end projected</p>
+              </CardContent>
+            </Card>
+
+            {/* Risk Level Card */}
+            <Card className={`border ${
+              insights.summary.riskLevel === 'high' ? 'border-red-200 bg-red-50/50' :
+              insights.summary.riskLevel === 'moderate' ? 'border-amber-200 bg-amber-50/50' :
+              'border-green-200 bg-green-50/50'
+            }`}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Risk Level</CardTitle>
+                <ShieldAlert className={`h-4 w-4 ${
+                  insights.summary.riskLevel === 'high' ? 'text-red-600' :
+                  insights.summary.riskLevel === 'moderate' ? 'text-amber-600' :
+                  'text-green-600'
+                }`} />
+              </CardHeader>
+              <CardContent>
+                <Badge
+                  variant={getRiskBadgeVariant(insights.summary.riskLevel)}
+                  className="text-sm px-3 py-1"
+                >
+                  {insights.summary.riskLevel.charAt(0).toUpperCase() + insights.summary.riskLevel.slice(1)}
+                </Badge>
+                <p className="text-xs text-muted-foreground mt-2">Based on burn analysis</p>
+              </CardContent>
+            </Card>
           </div>
         </CardContent>
       </Card>
 
-      {/* AI Recommendations */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="border-2 border-blue-200">
-          <CardHeader className="bg-blue-50/50">
-            <CardTitle className="text-sm text-blue-900">AI Recommendations</CardTitle>
+      {/* Two Column Layout for Recommendations and Risks */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* AI Recommendations */}
+        <Card className="border-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <Lightbulb className="h-5 w-5 text-blue-600" />
+              AI Recommendations
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 pt-4">
+          <CardContent className="space-y-4">
             {insights.recommendations?.map((rec, idx) => (
-              <div key={idx} className="space-y-2 p-3 rounded-lg bg-white/60 border border-blue-100">
-                <div className="flex items-center gap-2">
-                  <Badge variant={rec.priority === 'high' ? 'destructive' : 'secondary'} className="text-xs">
-                    {rec.priority}
+              <div key={idx} className="p-4 rounded-lg border bg-card">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-sm">{rec.title}</span>
+                  <Badge variant={rec.priority === 'high' ? 'destructive' : rec.priority === 'medium' ? 'default' : 'secondary'}>
+                    {rec.priority.charAt(0).toUpperCase() + rec.priority.slice(1)}
                   </Badge>
-                  <span className="font-semibold text-blue-800 text-xs">{rec.category}</span>
                 </div>
-                <p className="font-semibold text-blue-900 text-xs">{rec.title}</p>
-                <ul className="space-y-1">
+                <p className="text-xs text-muted-foreground mb-2">{rec.category}</p>
+                <ul className="space-y-1.5">
                   {rec.actions?.map((action, i) => (
-                    <li key={i} className="text-blue-700 text-xs flex items-start gap-2">
-                      <span>→</span>
+                    <li key={i} className="text-sm flex items-start gap-2">
+                      <span className="text-blue-600 mt-0.5">→</span>
                       <span>{action}</span>
                     </li>
                   ))}
@@ -234,36 +339,61 @@ export const DynamicFinancialInsights = ({ projections, variables, breakeven, cf
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-green-200">
-          <CardHeader className="bg-green-50/50">
-            <CardTitle className="text-sm text-green-900">Risks & Opportunities</CardTitle>
+        {/* Risks & Opportunities */}
+        <Card className="border-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              Risks & Opportunities
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 pt-4">
-            {insights.risks?.map((risk, idx) => (
-              <div key={idx} className="p-3 rounded-lg bg-white/60 border border-orange-100">
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant={risk.level === 'high' ? 'destructive' : 'secondary'} className="text-xs">
-                    {risk.level}
-                  </Badge>
-                  <span className="font-semibold text-orange-900 text-xs">{risk.title}</span>
-                </div>
-                <p className="text-orange-700 text-xs">{risk.description}</p>
+          <CardContent className="space-y-4">
+            {/* Risks Section */}
+            {insights.risks?.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Risks</p>
+                {insights.risks?.map((risk, idx) => (
+                  <div key={idx} className={`p-4 rounded-lg border-l-4 ${
+                    risk.level === 'high' ? 'border-l-red-500 bg-red-50/50' :
+                    risk.level === 'moderate' ? 'border-l-amber-500 bg-amber-50/50' :
+                    'border-l-yellow-500 bg-yellow-50/50'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant={getRiskBadgeVariant(risk.level)} className="text-xs">
+                        {risk.level.charAt(0).toUpperCase() + risk.level.slice(1)}
+                      </Badge>
+                      <span className="font-semibold text-sm">{risk.title}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{risk.description}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-            
-            <Separator className="my-3" />
-            
-            {insights.opportunities?.map((opp, idx) => (
-              <div key={idx} className="p-3 rounded-lg bg-green-50/60 border border-green-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant={opp.impact === 'high' ? 'default' : 'outline'} className="text-xs">
-                    {opp.impact}
-                  </Badge>
-                  <span className="font-semibold text-green-900 text-xs">{opp.title}</span>
-                </div>
-                <p className="text-green-700 text-xs">{opp.description}</p>
+            )}
+
+            {insights.risks?.length > 0 && insights.opportunities?.length > 0 && (
+              <Separator />
+            )}
+
+            {/* Opportunities Section */}
+            {insights.opportunities?.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                  <Rocket className="h-3 w-3" />
+                  Opportunities
+                </p>
+                {insights.opportunities?.map((opp, idx) => (
+                  <div key={idx} className="p-4 rounded-lg border-l-4 border-l-green-500 bg-green-50/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant={opp.impact === 'high' ? 'default' : 'secondary'} className="text-xs bg-green-600">
+                        {opp.impact.charAt(0).toUpperCase() + opp.impact.slice(1)} Impact
+                      </Badge>
+                      <span className="font-semibold text-sm">{opp.title}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{opp.description}</p>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </CardContent>
         </Card>
       </div>
