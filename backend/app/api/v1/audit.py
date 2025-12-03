@@ -15,7 +15,7 @@ router = APIRouter(prefix="/audit", tags=["audit"])
 
 
 class AuditLogCreate(BaseModel):
-    action_type: str = Field(..., pattern="^(login|logout|layout_change|report_export|report_view|snapshot_create|snapshot_restore)$")
+    action_type: str = Field(..., pattern="^(login|logout|layout_change|report_export|report_view|snapshot_create|snapshot_restore|impersonation_start|impersonation_end)$")
     action_data: Optional[dict[str, Any]] = None
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None

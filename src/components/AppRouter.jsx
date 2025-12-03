@@ -6,6 +6,7 @@ import { AuditLogViewer } from './AuditLogViewer'
 import { CashFlowDashboard } from './CashFlowDashboard'
 import IntegrationsPage from './IntegrationsPage'
 import { LandingPage } from './LandingPage'
+import { TeamCompensationPage } from './TeamCompensationPage'
 import { useAuth } from '../contexts/AuthContext'
 
 // SECURITY: DEV_BYPASS removed - was a security risk if DEV flag incorrectly set in production
@@ -276,6 +277,14 @@ export function AppRouter() {
         element={
           <AdminRoute>
             <IntegrationsPage />
+          </AdminRoute>
+        } 
+      />
+      <Route 
+        path="/admin/team" 
+        element={
+          <AdminRoute>
+            <TeamCompensationPage />
           </AdminRoute>
         } 
       />

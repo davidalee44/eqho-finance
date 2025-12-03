@@ -13,7 +13,8 @@ class Settings(BaseSettings):
 
     # CORS
     CORS_ORIGINS: list[str] = [
-        "http://localhost:5173",  # Vite dev server
+        "http://localhost:5173",  # Vite dev server (default)
+        "http://localhost:5174",  # Vite dev server (fallback port)
         "http://localhost:3000",  # Alternative port
         "https://eqho-due-diligence.vercel.app",  # Production (update as needed)
     ]
@@ -28,6 +29,10 @@ class Settings(BaseSettings):
     # Supabase Configuration
     SUPABASE_URL: str = ""
     SUPABASE_ANON_KEY: str = ""
+    # Service role key for backend operations that bypass RLS
+    # Accepts either SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_KEY
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
+    SUPABASE_SERVICE_KEY: str = ""  # Alias for service role key
 
     # Cache Configuration
     CACHE_TTL: int = 300  # 5 minutes default

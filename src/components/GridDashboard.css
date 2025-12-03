@@ -1,0 +1,236 @@
+/**
+ * GridDashboard Styles
+ * 
+ * Styles for the react-grid-layout based dashboard with:
+ * - Subtle dotted grid overlay in edit mode
+ * - Smooth drag/resize animations
+ * - Card hover and active states
+ * - Placeholder styling during drag
+ */
+
+/* Container styles */
+.grid-dashboard {
+  position: relative;
+  min-height: 400px;
+  padding: 1rem;
+}
+
+/* Grid overlay - subtle dots visible in edit mode */
+.grid-dashboard--edit-mode::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: radial-gradient(
+    circle,
+    hsl(var(--primary) / 0.12) 1.5px,
+    transparent 1.5px
+  );
+  /* 24 columns + margins, 40px row height + margins */
+  background-size: calc((100% - 32px) / 24) 56px; /* row height (40) + margin (16) */
+  background-position: 16px 16px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.grid-dashboard--edit-mode:hover::before,
+.grid-dashboard--dragging::before {
+  opacity: 1;
+}
+
+/* Grid item wrapper */
+.grid-dashboard-item {
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.grid-dashboard-item-content {
+  height: 100%;
+  overflow: hidden;
+}
+
+.grid-dashboard-item-content > * {
+  height: 100%;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* Editable mode styles */
+.grid-dashboard-item--editable {
+  cursor: grab;
+}
+
+.grid-dashboard-item--editable:active {
+  cursor: grabbing;
+}
+
+.grid-dashboard-item--editable:hover {
+  z-index: 10;
+}
+
+.grid-dashboard-item--editable:hover > .grid-dashboard-item-content > * {
+  box-shadow: 0 8px 30px hsl(var(--primary) / 0.2),
+              0 0 0 2px hsl(var(--primary) / 0.3);
+  border-color: hsl(var(--primary) / 0.5) !important;
+  transform: translateY(-2px);
+}
+
+/* Drag handle */
+.grid-dashboard-drag-handle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--background) / 0.9);
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+  z-index: 20;
+  color: hsl(var(--muted-foreground));
+}
+
+.grid-dashboard-item--editable:hover .grid-dashboard-drag-handle {
+  opacity: 1;
+}
+
+.grid-dashboard-drag-handle:hover {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  transform: scale(1.1);
+}
+
+.grid-dashboard-drag-handle:active {
+  cursor: grabbing;
+  transform: scale(0.95);
+}
+
+/* Active dragging state */
+.grid-dashboard--dragging .grid-dashboard-item:not(.react-grid-item.cssTransforms.react-draggable-dragging):not(.react-grid-item.resizing) {
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+/* React Grid Layout overrides */
+.grid-dashboard .react-grid-item {
+  transition: all 200ms ease-out;
+  transition-property: left, top, width, height;
+}
+
+.grid-dashboard .react-grid-item.cssTransforms {
+  transition-property: transform, width, height;
+}
+
+/* Dragging item */
+.grid-dashboard .react-grid-item.react-draggable-dragging {
+  z-index: 100;
+  cursor: grabbing;
+  transition: none !important;
+}
+
+.grid-dashboard .react-grid-item.react-draggable-dragging > .grid-dashboard-item-content > * {
+  box-shadow: 0 20px 40px hsl(var(--foreground) / 0.2),
+              0 0 0 2px hsl(var(--primary));
+  transform: scale(1.02);
+}
+
+.grid-dashboard .react-grid-item.react-draggable-dragging .grid-dashboard-drag-handle {
+  opacity: 1;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+/* Resizing item */
+.grid-dashboard .react-grid-item.resizing {
+  z-index: 100;
+  transition: none !important;
+}
+
+.grid-dashboard .react-grid-item.resizing > .grid-dashboard-item-content > * {
+  box-shadow: 0 8px 24px hsl(var(--foreground) / 0.15);
+  border: 2px dashed hsl(var(--primary)) !important;
+}
+
+/* Placeholder during drag/resize */
+.grid-dashboard .react-grid-placeholder {
+  background: hsl(var(--primary) / 0.15);
+  border: 2px dashed hsl(var(--primary) / 0.5);
+  border-radius: 12px;
+  transition: all 100ms ease;
+}
+
+/* Resize handle */
+.grid-dashboard .react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  bottom: 4px;
+  right: 4px;
+  cursor: se-resize;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.grid-dashboard-item--editable:hover .react-resizable-handle {
+  opacity: 1;
+}
+
+.grid-dashboard .react-resizable-handle::after {
+  content: '';
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid hsl(var(--primary) / 0.5);
+  border-bottom: 2px solid hsl(var(--primary) / 0.5);
+  border-radius: 0 0 3px 0;
+}
+
+.grid-dashboard .react-resizable-handle:hover::after {
+  border-color: hsl(var(--primary));
+}
+
+/* Static mode (non-editable) */
+.grid-dashboard:not(.grid-dashboard--edit-mode) .react-grid-item {
+  cursor: default;
+}
+
+.grid-dashboard:not(.grid-dashboard--edit-mode) .react-resizable-handle {
+  display: none;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .grid-dashboard {
+    padding: 0.5rem;
+  }
+  
+  .grid-dashboard-drag-handle {
+    width: 36px;
+    height: 36px;
+    opacity: 1; /* Always show on touch devices */
+  }
+  
+  .grid-dashboard--edit-mode::before {
+    opacity: 0.5; /* Subtle but visible on mobile */
+  }
+}
+
+/* Print styles - hide edit UI */
+@media print {
+  .grid-dashboard-drag-handle,
+  .react-resizable-handle {
+    display: none !important;
+  }
+  
+  .grid-dashboard--edit-mode::before {
+    display: none !important;
+  }
+}
+

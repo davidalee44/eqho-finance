@@ -16,6 +16,8 @@ export const ACTION_TYPES = {
   REPORT_VIEW: 'report_view',
   SNAPSHOT_CREATE: 'snapshot_create',
   SNAPSHOT_RESTORE: 'snapshot_restore',
+  IMPERSONATION_START: 'impersonation_start',
+  IMPERSONATION_END: 'impersonation_end',
 };
 
 // Queue for batching audit logs
@@ -319,17 +321,13 @@ if (typeof window !== 'undefined') {
     }
   };
 
-  const handleBeforeUnload = (event) => {
+  const handleBeforeUnload = () => {
     if (!hasPendingLogs()) {
       return;
     }
 
-    const success = flushPendingLogsSync();
-
-    if (!success) {
-      event.preventDefault();
-      event.returnValue = '';
-    }
+    // Best-effort flush - don't block navigation for telemetry
+    flushPendingLogsSync();
   };
 
   const handlePageHide = (event) => {

@@ -8,8 +8,19 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { formatDataTimestamp } from '@/lib/api';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from './ui/alert-dialog';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -17,16 +28,16 @@ import { Separator } from './ui/separator';
 
 // Official brand icons from Simple Icons
 import {
-  SiAirtable,
-  SiGooglesheets,
-  SiHubspot,
-  SiMailchimp,
-  SiNotion,
-  SiQuickbooks,
-  SiSalesforce,
-  SiSlack,
-  SiStripe,
-  SiZapier,
+    SiAirtable,
+    SiGooglesheets,
+    SiHubspot,
+    SiMailchimp,
+    SiNotion,
+    SiQuickbooks,
+    SiSalesforce,
+    SiSlack,
+    SiStripe,
+    SiZapier,
 } from '@icons-pack/react-simple-icons';
 
 // ============================================================================
@@ -356,7 +367,7 @@ const STATUS_CONFIG = {
     text: 'text-red-700',
     dot: 'bg-red-500',
     icon: XCircleIcon,
-    label: 'Error',
+    label: 'Connection Error',
   },
 };
 
@@ -366,14 +377,25 @@ const STATUS_CONFIG = {
 
 const IntegrationCard = ({ connection, onConnect, onDisconnect, onSync, onTest }) => {
   const [testResult, setTestResult] = useState(null);
-  const testTimeoutRef = React.useRef(null);
-  const { app, app_name, description, status, connected_at, last_sync, pending } = connection;
+  const [testFailed, setTestFailed] = useState(false);
+  const testTimeoutRef = useRef(null);
+  const { app, app_name, description, status, connection_type, connected_at, last_sync, pending } = connection;
+  
+  // Reset testFailed when connection status changes (e.g., on refresh)
+  useEffect(() => {
+    setTestFailed(false);
+    setTestResult(null);
+  }, [status]);
   
   const LogoComponent = APP_LOGOS[app] || ((props) => <GenericAppLogo {...props} name={app_name} />);
-  const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.disconnected;
+  
+  // Override status if test failed - show actual connection state
+  const effectiveStatus = testFailed ? 'error' : status;
+  const statusConfig = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.disconnected;
   const StatusIcon = statusConfig.icon;
-  const isConnected = status === 'connected' || status === 'active';
+  const isConnected = (status === 'connected' || status === 'active') && !testFailed;
   const isPending = !!pending;
+  const isDirectApi = connection_type === 'direct_api';
   
   const dismissTestResult = () => {
     if (testTimeoutRef.current) {
@@ -390,14 +412,20 @@ const IntegrationCard = ({ connection, onConnect, onDisconnect, onSync, onTest }
     }
     const result = await onTest(app);
     setTestResult(result);
+    
+    // Track if test failed to update status display
+    setTestFailed(result?.status !== 'connected');
+    
     // Auto-dismiss after 10 seconds
     testTimeoutRef.current = setTimeout(() => setTestResult(null), 10000);
   };
   
   return (
     <Card className={`relative overflow-hidden bg-white border border-slate-200 shadow-sm hover:shadow-lg hover:border-slate-300 transition-all duration-300 ${isPending ? 'opacity-75' : ''}`}>
-      {/* Status indicator line */}
-      <div className={`absolute top-0 left-0 right-0 h-1 ${isConnected ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+      {/* Status indicator line - reflects actual test status */}
+      <div className={`absolute top-0 left-0 right-0 h-1 ${
+        testFailed ? 'bg-red-500' : isConnected ? 'bg-emerald-500' : 'bg-slate-200'
+      }`} />
       
       <CardHeader className="pb-4 pt-5">
         <div className="flex items-start justify-between">
@@ -422,7 +450,7 @@ const IntegrationCard = ({ connection, onConnect, onDisconnect, onSync, onTest }
       
       <CardContent className="pt-0">
         {/* Status Badge */}
-        <div className="mb-4">
+        <div className="mb-4 flex items-center gap-2">
           <Badge 
             variant="outline" 
             className={`${statusConfig.bg} ${statusConfig.border} ${statusConfig.text} font-medium px-3 py-1`}
@@ -430,22 +458,45 @@ const IntegrationCard = ({ connection, onConnect, onDisconnect, onSync, onTest }
             <span className={`w-2 h-2 rounded-full ${statusConfig.dot} mr-2`} />
             {statusConfig.label}
           </Badge>
+          {isConnected && isDirectApi && (
+            <Badge 
+              variant="outline" 
+              className="bg-blue-50 border-blue-200 text-blue-700 font-medium px-2 py-0.5 text-xs"
+            >
+              Direct API
+            </Badge>
+          )}
         </div>
         
         {/* Connection Details */}
         {isConnected && (
           <div className="mb-4 p-3 bg-slate-50 rounded-lg space-y-1.5 text-sm">
-            {connected_at && (
-              <div className="flex items-center justify-between text-slate-600">
-                <span>Connected</span>
-                <span className="text-slate-900 font-medium">{formatDataTimestamp(connected_at)}</span>
-              </div>
-            )}
-            {last_sync && (
-              <div className="flex items-center justify-between text-slate-600">
-                <span>Last sync</span>
-                <span className="text-slate-900 font-medium">{formatDataTimestamp(last_sync)}</span>
-              </div>
+            {isDirectApi ? (
+              <>
+                <div className="flex items-center justify-between text-slate-600">
+                  <span>Connection</span>
+                  <span className="text-slate-900 font-medium">API Key (env)</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-600">
+                  <span>Status</span>
+                  <span className="text-emerald-600 font-medium">Configured</span>
+                </div>
+              </>
+            ) : (
+              <>
+                {connected_at && (
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span>Connected</span>
+                    <span className="text-slate-900 font-medium">{formatDataTimestamp(connected_at)}</span>
+                  </div>
+                )}
+                {last_sync && (
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span>Last sync</span>
+                    <span className="text-slate-900 font-medium">{formatDataTimestamp(last_sync)}</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -473,7 +524,7 @@ const IntegrationCard = ({ connection, onConnect, onDisconnect, onSync, onTest }
           {!isConnected ? (
             <Button
               onClick={() => onConnect(app)}
-              disabled={isPending}
+              disabled={isPending || isDirectApi}
               className="flex-1 bg-slate-900 hover:bg-slate-800 text-white shadow-sm"
             >
               {pending === 'connecting' ? (
@@ -485,25 +536,27 @@ const IntegrationCard = ({ connection, onConnect, onDisconnect, onSync, onTest }
             </Button>
           ) : (
             <>
-              <Button
-                onClick={() => onSync(app)}
-                disabled={isPending}
-                variant="outline"
-                className="flex-1 text-slate-700 border-slate-300 hover:bg-slate-50"
-              >
-                {pending === 'syncing' ? (
-                  <LoaderIcon className="w-4 h-4 mr-2" />
-                ) : (
-                  <RefreshIcon className="w-4 h-4 mr-2" />
-                )}
-                Sync Data
-              </Button>
+              {!isDirectApi && (
+                <Button
+                  onClick={() => onSync(app)}
+                  disabled={isPending}
+                  variant="outline"
+                  className="flex-1 text-slate-700 border-slate-300 hover:bg-slate-50"
+                >
+                  {pending === 'syncing' ? (
+                    <LoaderIcon className="w-4 h-4 mr-2" />
+                  ) : (
+                    <RefreshIcon className="w-4 h-4 mr-2" />
+                  )}
+                  Sync Data
+                </Button>
+              )}
               
               <Button
                 onClick={handleTest}
                 disabled={isPending}
                 variant="outline"
-                className="text-slate-700 border-slate-300 hover:bg-slate-50"
+                className={`text-slate-700 border-slate-300 hover:bg-slate-50 ${isDirectApi ? 'flex-1' : ''}`}
               >
                 {pending === 'testing' ? (
                   <LoaderIcon className="w-4 h-4 mr-2" />
@@ -513,14 +566,44 @@ const IntegrationCard = ({ connection, onConnect, onDisconnect, onSync, onTest }
                 Test
               </Button>
               
-              <Button
-                onClick={() => onDisconnect(app)}
-                disabled={isPending}
-                variant="ghost"
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <UnplugIcon className="w-4 h-4" />
-              </Button>
+              {/* Only show disconnect for OAuth connections, not direct API */}
+              {!isDirectApi && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      disabled={isPending}
+                      variant="ghost"
+                      className="text-slate-400 hover:text-red-600 hover:bg-red-50"
+                      title={`Disconnect ${app_name}`}
+                    >
+                      <UnplugIcon className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                        <AlertCircleIcon className="w-5 h-5" />
+                        Disconnect {app_name}?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="text-slate-600">
+                        <strong className="text-slate-900">Warning:</strong> This will disconnect your {app_name} integration. 
+                        You will need to reconnect and re-authorize to restore the connection.
+                        <br /><br />
+                        Any scheduled syncs or automations using this connection will stop working.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => onDisconnect(app)}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        Yes, Disconnect
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </>
           )}
         </div>

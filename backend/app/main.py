@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import (
+    admin,
     attrition,
     audit,
     cache,
@@ -90,6 +91,7 @@ app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
 app.include_router(flags.router, prefix="/api/v1/flags", tags=["flags"])
 app.include_router(cashflow.router, prefix="/api/v1/cashflow", tags=["cashflow"])
 app.include_router(integrations.router, prefix="/api/v1/integrations", tags=["integrations"])
+app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
 
 
 @app.get("/")

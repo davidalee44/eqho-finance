@@ -1,3 +1,23 @@
+/**
+ * @deprecated This hook is deprecated in favor of GridDashboard component which uses react-grid-layout.
+ * 
+ * The new GridDashboard provides:
+ * - Trello-style drag and drop with auto-reflow
+ * - Smooth animations and grid snapping
+ * - Responsive breakpoints
+ * - Better accessibility
+ * 
+ * Migration:
+ * 1. Replace useDraggableCards hook with GridDashboard component
+ * 2. Wrap your cards in <GridDashboard editMode={true}>{cards}</GridDashboard>
+ * 3. Use layoutService.saveRGLLayout() for persistence
+ * 
+ * This file is kept for reference and potential fallback scenarios.
+ * 
+ * @see src/components/GridDashboard.jsx
+ * @see src/services/layoutService.js
+ */
+
 import interact from 'interactjs';
 import { useEffect, useRef } from 'react';
 

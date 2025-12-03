@@ -1,6 +1,7 @@
 import { ComprehensiveMetrics } from '@/components/ComprehensiveMetrics';
 import { DynamicFinancialInsights } from '@/components/DynamicFinancialInsights';
 import FinancialReport from '@/components/FinancialReport';
+import { ImpersonationBanner } from '@/components/ImpersonationBanner';
 import { MaintenanceBanner, MaintenanceOverlay } from '@/components/MaintenanceBanner';
 import { MRRMetrics } from '@/components/MRRMetrics';
 import { OctoberRevenueBreakdown } from '@/components/OctoberRevenueBreakdown';
@@ -15,19 +16,19 @@ import { Label } from '@/components/ui/label';
 import { PercentageInput } from '@/components/ui/percentage-input';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ValidatedMetrics } from '@/components/ValidatedMetrics';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, ArrowUp, BarChart, ChevronLeft, ChevronRight, Code, DollarSign, GripVertical, LayoutGrid, Lock, Menu, Presentation, Target, TrendingUp, Users, Zap } from 'lucide-react';
-import React, { useEffect, useState, useMemo } from 'react';
+import { AlertTriangle, ArrowUp, BarChart, ChevronLeft, ChevronRight, Code, DollarSign, GripVertical, LayoutGrid, Lock, Pencil, Presentation, Target, TrendingUp, Users, Zap } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { BentoDashboard } from './components/BentoDashboard';
 import { Footer } from './components/Footer';
 import UserProfile from './components/UserProfile';
 import { useAuth } from './contexts/AuthContext';
-import { useDraggableCards } from './hooks/useDraggableCards';
-import { debouncedSaveLayout } from './services/layoutService';
+import { fetchRGLLayout, saveRGLLayout } from './services/layoutService';
 
 // Indices of slides to show in quick investor view (curated 5-slide subset)
 const QUICK_INVESTOR_SLIDE_INDICES = [0, 4, 5, 6, 10]; // Executive Summary, Growth Strategy, Investment Terms, 36-Month Projection, AI Financial Report
@@ -35,13 +36,31 @@ const QUICK_INVESTOR_SLIDE_INDICES = [0, 4, 5, 6, 10]; // Executive Summary, Gro
 // Storage key for financial model variables
 const STORAGE_KEY = 'financial-model-variables';
 
-// Default values - Updated Nov 2025 with current Stripe MRR
+// October 2025 Actuals from QuickBooks P&L (locked baseline)
+const OCTOBER_ACTUALS = {
+  revenue: 89469,      // Total Income: $89,469.07
+  cogs: 35137,         // Cost of Goods Sold: $35,137.25
+  grossProfit: 54332,  // Gross Profit: $54,331.82
+  opex: 171413,        // Operating Expenses: $171,413.47
+  noi: -117355,        // Net Operating Income: -$117,355.12
+  grossMargin: 60.7,   // Gross Margin %
+  period: 'October 2025',
+};
+
+// Default values - November estimates + projection parameters
 const DEFAULT_VARIABLES = {
-  septRevenue: 104492,  // Current Stripe MRR (Nov 2025): $104,492
-  cmgr: 19.9, // CMGR Jan-Oct 2025 actual - historically proven growth rate
-  targetOpex: 190000,
-  targetGrossMargin: 70,
-  startingCash: 500000,
+  // November 2025 Estimates (editable starting point) - Based on Oct QB actuals + 16% growth
+  novRevenue: 104000,  // Estimated November revenue (~16% growth from Oct $89K)
+  novCogs: 39500,      // Estimated November COGS (~38% of revenue, improving from 39.3%)
+  novOpex: 165000,     // Estimated November operating expenses (cost discipline)
+  // Projection parameters
+  cmgr: 19.9,          // CMGR Jan-Oct 2025 actual - historically proven growth rate
+  targetOpex: 190000,  // Target monthly OpEx at scale
+  targetGrossMargin: 70, // Target gross margin %
+  // Capital structure
+  cashOnHand: 50000,       // Current cash on hand
+  retainerCapital: 0,      // Retainer/prepaid capital from customers
+  investmentCapital: 500000, // Investment being raised
 };
 
 // Interactive Financial Model Component
@@ -52,6 +71,23 @@ const FinancialModelSlide = () => {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        // Migrate old structure to new November estimates structure
+        if (parsed.octRevenue && !parsed.novRevenue) {
+          // Old format had octRevenue - migrate to new format
+          parsed.novRevenue = Math.round(parsed.octRevenue * 1.06); // ~6% growth estimate
+          parsed.novCogs = Math.round(parsed.novRevenue * 0.39); // ~39% COGS
+          parsed.novOpex = 165000; // Default estimate
+          delete parsed.octRevenue;
+        }
+        if (parsed.septRevenue) {
+          delete parsed.septRevenue;
+        }
+        // Migrate old startingCash to new structure
+        if (parsed.startingCash && !parsed.investmentCapital) {
+          parsed.investmentCapital = parsed.startingCash;
+          parsed.cashOnHand = 50000; // Default cash on hand
+          delete parsed.startingCash;
+        }
         // Merge with defaults to handle any missing keys
         return { ...DEFAULT_VARIABLES, ...parsed };
       }
@@ -101,50 +137,60 @@ const FinancialModelSlide = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_VARIABLES));
   };
 
-  // Calculate projections based on variables
+  // Calculate projections based on November estimates
   const calculateProjections = () => {
     const growthRate = 1 + (variables.cmgr / 100);
     const months = [];
-    let cash = variables.startingCash;
+    // Total available capital = Cash on Hand + Retainer Capital + Investment Capital
+    const totalCapital = (variables.cashOnHand || 0) + (variables.retainerCapital || 0) + (variables.investmentCapital || 0);
+    let cash = totalCapital;
 
+    // November estimates as starting point
+    const novGrossMargin = ((variables.novRevenue - variables.novCogs) / variables.novRevenue) * 100;
+    
     for (let m = 1; m <= 12; m++) {
-      const revenue = variables.septRevenue * Math.pow(growthRate, m);
-      // Calculate COGS to achieve target gross margin
-      // Formula: COGS = Revenue × (1 - TargetGrossMargin%)
-      // This ensures: Gross Margin = (Revenue - COGS) / Revenue = TargetGrossMargin%
-      const cogs = revenue * (1 - variables.targetGrossMargin / 100);
-      const grossProfit = revenue - cogs;
+      let revenue, cogs, opex;
       
-      // Growth-focused OpEx plan (maintain higher spend for growth)
-      const currentOpex = 150286; // Sep actual
-      const targetFixed = variables.targetOpex - cogs;
-      
-      // Ramp up to target OpEx over first 3 months
-      let fixedOpex;
-      if (m <= 3) {
-        const monthlyIncrease = (targetFixed - (currentOpex - cogs)) / 3;
-        fixedOpex = (currentOpex - cogs) + (monthlyIncrease * m);
+      if (m === 1) {
+        // Month 1 = November (use editable estimates)
+        revenue = variables.novRevenue;
+        cogs = variables.novCogs;
+        opex = variables.novOpex;
       } else {
-        fixedOpex = targetFixed;
+        // Months 2-12: Apply growth from November baseline
+        revenue = variables.novRevenue * Math.pow(growthRate, m - 1);
+        
+        // Gradually improve gross margin from November actual to target
+        const startGM = novGrossMargin / 100;
+        const targetGM = variables.targetGrossMargin / 100;
+        const gmProgress = Math.min(1, (m - 1) / 6); // Reach target GM by month 7
+        const currentGM = startGM + (targetGM - startGM) * gmProgress;
+        cogs = revenue * (1 - currentGM);
+        
+        // Gradually ramp OpEx from November to target
+        const opexProgress = Math.min(1, (m - 1) / 3); // Reach target by month 4
+        opex = variables.novOpex + (variables.targetOpex - variables.novOpex) * opexProgress;
       }
       
-      const totalOpex = cogs + fixedOpex;
-      const noi = revenue - totalOpex;
+      const grossProfit = revenue - cogs;
+      const grossMargin = (grossProfit / revenue) * 100;
+      const noi = grossProfit - opex;
       cash += noi;
 
       months.push({
         month: m,
-        monthLabel: ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'][m-1],
+        monthLabel: ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'][m-1],
         revenue,
         cogs,
         grossProfit,
-        grossMargin: (grossProfit / revenue * 100),
-        fixedOpex,
-        totalOpex,
+        grossMargin,
+        opex,
+        totalOpex: cogs + opex, // For backward compatibility
+        fixedOpex: opex, // For backward compatibility
         noi,
         cash,
         profitable: noi > 0,
-        cfPositive: cash > variables.startingCash
+        cfPositive: cash > totalCapital
       });
     }
 
@@ -160,9 +206,10 @@ const FinancialModelSlide = () => {
   const breakeven = projections.find(m => m.profitable);
   const cfPositive = projections.find(m => m.cfPositive);
   
-  // Calculate actual burn: lowest cash point relative to starting cash
+  // Calculate actual burn: lowest cash point relative to total capital
+  const totalCapital = (variables.cashOnHand || 0) + (variables.retainerCapital || 0) + (variables.investmentCapital || 0);
   const lowestCash = Math.min(...projections.map(m => m.cash));
-  const totalBurn = variables.startingCash - lowestCash;
+  const totalBurn = totalCapital - lowestCash;
 
   return (
     <div className="mono-theme space-y-4 p-6 rounded-lg">
@@ -175,58 +222,178 @@ const FinancialModelSlide = () => {
             </AccordionTrigger>
             <AccordionContent>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="septRevenue" className="text-xs font-medium">Current MRR (Stripe)</Label>
-                    <CurrencyInput
-                      id="septRevenue"
-                      value={variables.septRevenue}
-                      onChange={(value) => updateVariable('septRevenue', value)}
-                      className="h-9 text-sm"
-                      placeholder="104,492"
-                    />
+                {/* October 2025 Actuals - Locked Baseline */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <h4 className="text-sm font-semibold text-slate-700">October 2025 Actuals</h4>
+                    <Badge variant="secondary" className="text-xs">QuickBooks</Badge>
+                    <Lock className="h-3 w-3 text-slate-400" />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cmgr" className="text-xs font-medium">CMGR (Monthly Growth Rate)</Label>
-                    <PercentageInput
-                      id="cmgr"
-                      value={variables.cmgr}
-                      onChange={(value) => updateVariable('cmgr', value)}
-                      className="h-9 text-sm"
-                      placeholder="22.8"
-                      step={0.1}
-                    />
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="text-center">
+                      <p className="text-xs text-slate-500">Revenue</p>
+                      <p className="text-sm font-semibold text-slate-700">${(OCTOBER_ACTUALS.revenue / 1000).toFixed(0)}K</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-slate-500">COGS</p>
+                      <p className="text-sm font-semibold text-slate-700">${(OCTOBER_ACTUALS.cogs / 1000).toFixed(0)}K</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-slate-500">Gross Margin</p>
+                      <p className="text-sm font-semibold text-slate-700">{OCTOBER_ACTUALS.grossMargin}%</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-slate-500">OPEX</p>
+                      <p className="text-sm font-semibold text-slate-700">${(OCTOBER_ACTUALS.opex / 1000).toFixed(0)}K</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-slate-500">NOI</p>
+                      <p className="text-sm font-semibold text-red-600">${(OCTOBER_ACTUALS.noi / 1000).toFixed(0)}K</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-slate-500">Period</p>
+                      <p className="text-sm font-semibold text-slate-700">Oct 2025</p>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="targetOpex" className="text-xs font-medium">Target Monthly OpEx</Label>
-                    <CurrencyInput
-                      id="targetOpex"
-                      value={variables.targetOpex}
-                      onChange={(value) => updateVariable('targetOpex', value)}
-                      className="h-9 text-sm"
-                      placeholder="190,000"
-                    />
+                </div>
+
+                <Separator className="my-4" />
+
+                {/* November 2025 Estimates - Editable Starting Point */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-semibold text-amber-700">November 2025 Estimates</h4>
+                      <Badge variant="outline" className="text-xs border-amber-300 text-amber-600">Editable</Badge>
+                      <Pencil className="h-3 w-3 text-amber-500" />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-amber-600 hover:text-amber-800 hover:bg-amber-100"
+                      onClick={() => {
+                        // Quick-fill with October actuals + 5% growth
+                        updateVariable('novRevenue', Math.round(OCTOBER_ACTUALS.revenue * 1.05));
+                        updateVariable('novCogs', Math.round(OCTOBER_ACTUALS.cogs * 1.05));
+                        updateVariable('novOpex', OCTOBER_ACTUALS.opex); // Keep OpEx flat
+                      }}
+                    >
+                      Use Oct + 5% Growth
+                    </Button>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="targetGrossMargin" className="text-xs font-medium">Target Gross Margin</Label>
-                    <PercentageInput
-                      id="targetGrossMargin"
-                      value={variables.targetGrossMargin}
-                      onChange={(value) => updateVariable('targetGrossMargin', value)}
-                      className="h-9 text-sm"
-                      placeholder="70.0"
-                      step={0.1}
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-amber-50/50 rounded-lg border border-amber-200">
+                    <div className="space-y-2">
+                      <Label htmlFor="novRevenue" className="text-xs font-medium text-amber-800">Revenue Estimate</Label>
+                      <CurrencyInput
+                        id="novRevenue"
+                        value={variables.novRevenue}
+                        onChange={(value) => updateVariable('novRevenue', value)}
+                        className="h-9 text-sm border-amber-300 focus:border-amber-500"
+                        placeholder="95,000"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="novCogs" className="text-xs font-medium text-amber-800">COGS Estimate</Label>
+                      <CurrencyInput
+                        id="novCogs"
+                        value={variables.novCogs}
+                        onChange={(value) => updateVariable('novCogs', value)}
+                        className="h-9 text-sm border-amber-300 focus:border-amber-500"
+                        placeholder="37,000"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="novOpex" className="text-xs font-medium text-amber-800">OPEX Estimate</Label>
+                      <CurrencyInput
+                        id="novOpex"
+                        value={variables.novOpex}
+                        onChange={(value) => updateVariable('novOpex', value)}
+                        className="h-9 text-sm border-amber-300 focus:border-amber-500"
+                        placeholder="165,000"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="startingCash" className="text-xs font-medium">Starting Cash</Label>
-                    <CurrencyInput
-                      id="startingCash"
-                      value={variables.startingCash}
-                      onChange={(value) => updateVariable('startingCash', value)}
-                      className="h-9 text-sm"
-                      placeholder="500,000"
-                    />
+                  <div className="mt-2 flex items-center gap-4 text-xs text-amber-700">
+                    <span>Est. Gross Margin: <strong>{(((variables.novRevenue - variables.novCogs) / variables.novRevenue) * 100).toFixed(1)}%</strong></span>
+                    <span>Est. NOI: <strong className={variables.novRevenue - variables.novCogs - variables.novOpex > 0 ? 'text-green-600' : 'text-red-600'}>
+                      ${((variables.novRevenue - variables.novCogs - variables.novOpex) / 1000).toFixed(0)}K
+                    </strong></span>
+                  </div>
+                </div>
+
+                <Separator className="my-4" />
+
+                {/* Projection Settings */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-semibold text-slate-700 mb-3">Projection Settings (Dec 2025 - Oct 2026)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="cmgr" className="text-xs font-medium">CMGR (Monthly Growth)</Label>
+                      <PercentageInput
+                        id="cmgr"
+                        value={variables.cmgr}
+                        onChange={(value) => updateVariable('cmgr', value)}
+                        className="h-9 text-sm"
+                        placeholder="19.9"
+                        step={0.1}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="targetGrossMargin" className="text-xs font-medium">Target Gross Margin</Label>
+                      <PercentageInput
+                        id="targetGrossMargin"
+                        value={variables.targetGrossMargin}
+                        onChange={(value) => updateVariable('targetGrossMargin', value)}
+                        className="h-9 text-sm"
+                        placeholder="70.0"
+                        step={0.1}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="targetOpex" className="text-xs font-medium">Target Monthly OpEx</Label>
+                      <CurrencyInput
+                        id="targetOpex"
+                        value={variables.targetOpex}
+                        onChange={(value) => updateVariable('targetOpex', value)}
+                        className="h-9 text-sm"
+                        placeholder="190,000"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cashOnHand" className="text-xs font-medium">Cash on Hand</Label>
+                      <CurrencyInput
+                        id="cashOnHand"
+                        value={variables.cashOnHand}
+                        onChange={(value) => updateVariable('cashOnHand', value)}
+                        className="h-9 text-sm"
+                        placeholder="50,000"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="retainerCapital" className="text-xs font-medium">Retainer Capital</Label>
+                      <CurrencyInput
+                        id="retainerCapital"
+                        value={variables.retainerCapital}
+                        onChange={(value) => updateVariable('retainerCapital', value)}
+                        className="h-9 text-sm"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="investmentCapital" className="text-xs font-medium">Investment Capital</Label>
+                      <CurrencyInput
+                        id="investmentCapital"
+                        value={variables.investmentCapital}
+                        onChange={(value) => updateVariable('investmentCapital', value)}
+                        className="h-9 text-sm"
+                        placeholder="500,000"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-3 p-2 bg-blue-50 rounded-md border border-blue-200">
+                    <p className="text-xs text-blue-700">
+                      <strong>Total Available Capital:</strong> ${((variables.cashOnHand || 0) + (variables.retainerCapital || 0) + (variables.investmentCapital || 0)).toLocaleString()}
+                    </p>
                   </div>
                 </div>
                 
@@ -355,7 +522,7 @@ const FinancialModelSlide = () => {
                           <TableCell className={cn("text-xs text-right font-mono font-semibold", month.noi > 0 ? "text-green-600" : "text-red-600")}>
                             ${(month.noi / 1000).toFixed(0)}K
                           </TableCell>
-                          <TableCell className={cn("text-xs text-right font-mono font-semibold", month.cash > variables.startingCash ? "text-green-600" : month.cash > 100000 ? "" : "text-orange-600")}>
+                          <TableCell className={cn("text-xs text-right font-mono font-semibold", month.cash > totalCapital ? "text-green-600" : month.cash > 100000 ? "" : "text-orange-600")}>
                             ${(month.cash / 1000).toFixed(0)}K
                           </TableCell>
                           <TableCell className="text-xs">
@@ -648,27 +815,29 @@ const FinancialModelSlide = () => {
 
       {/* Key Metrics Cards */}
       <div className="grid grid-cols-3 gap-4">
-        <Card className="border-2 border-blue-200">
-          <CardHeader className="pb-3 bg-blue-50/50">
-            <CardTitle className="text-sm">Baseline (Sept 2025)</CardTitle>
+        <Card className="border-2 border-amber-200">
+          <CardHeader className="pb-3 bg-amber-50/50">
+            <CardTitle className="text-sm">Nov 2025 (Start Point)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-xs pt-4">
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Revenue:</span>
-              <span className="font-medium font-mono">$90K</span>
+              <span className="font-medium font-mono">${(variables.novRevenue / 1000).toFixed(0)}K</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Gross Margin:</span>
-              <span className="font-medium font-mono">69.1%</span>
+              <span className="font-medium font-mono">{(((variables.novRevenue - variables.novCogs) / variables.novRevenue) * 100).toFixed(1)}%</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Current OpEx:</span>
-              <span className="font-medium font-mono">$150K</span>
+              <span className="text-muted-foreground">OPEX:</span>
+              <span className="font-medium font-mono">${(variables.novOpex / 1000).toFixed(0)}K</span>
             </div>
             <Separator />
             <div className="flex justify-between items-center pt-1">
-              <span className="font-medium">Monthly Burn:</span>
-              <span className="text-red-600 font-bold font-mono">-$88K</span>
+              <span className="font-medium">Est. NOI:</span>
+              <span className={`font-bold font-mono ${(variables.novRevenue - variables.novCogs - variables.novOpex) > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                ${((variables.novRevenue - variables.novCogs - variables.novOpex) / 1000).toFixed(0)}K
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -704,8 +873,23 @@ const FinancialModelSlide = () => {
           </CardHeader>
           <CardContent className="space-y-2 text-xs pt-4">
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Initial Capital:</span>
-              <span className="font-medium font-mono">${(variables.startingCash / 1000).toFixed(0)}K</span>
+              <span className="text-muted-foreground">Cash on Hand:</span>
+              <span className="font-medium font-mono">${((variables.cashOnHand || 0) / 1000).toFixed(0)}K</span>
+            </div>
+            {(variables.retainerCapital || 0) > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">+ Retainer:</span>
+                <span className="font-medium font-mono">${((variables.retainerCapital || 0) / 1000).toFixed(0)}K</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">+ Investment:</span>
+              <span className="font-medium font-mono">${((variables.investmentCapital || 0) / 1000).toFixed(0)}K</span>
+            </div>
+            <Separator />
+            <div className="flex justify-between items-center">
+              <span className="font-medium">Total Capital:</span>
+              <span className="font-bold font-mono">${(totalCapital / 1000).toFixed(0)}K</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Breakeven:</span>
@@ -1478,15 +1662,132 @@ const TeamCompensationSlide = () => {
   );
 };
 
+// 36-Month Projection Table Component with Investment Toggle
+const ThirtySixMonthTable = () => {
+  const [includeInvestment, setIncludeInvestment] = useState(true);
+  const investmentCapital = 500000; // $500K investment
+
+  // Quarterly data with operational cash flow (NOI)
+  const quarterlyData = [
+    { quarter: 'Q1 2026 (Jan)', mrr: '$119K', arr: '$1.43M', gm: '61.9%', cogs: '38.1%', noi: -233000, isBreakeven: false },
+    { quarter: 'Q2 2026 (Apr)', mrr: '$158K', arr: '$1.90M', gm: '63.7%', cogs: '36.3%', noi: -159000, isBreakeven: false },
+    { quarter: 'Q3 2026 (Jul)', mrr: '$211K', arr: '$2.53M', gm: '65.5%', cogs: '34.5%', noi: -57000, isBreakeven: true, label: 'Breakeven' },
+    { quarter: 'Q4 2026 (Oct)', mrr: '$281K', arr: '$3.37M', gm: '67.8%', cogs: '32.2%', noi: 182000, isBreakeven: false },
+    { quarter: 'Q1 2027 (Jan)', mrr: '$374K', arr: '$4.48M', gm: '69.6%', cogs: '30.4%', noi: 434000, isBreakeven: false },
+    { quarter: 'Q2 2027 (Apr)', mrr: '$497K', arr: '$5.97M', gm: '71.4%', cogs: '28.6%', noi: 634000, isBreakeven: false },
+    { quarter: 'Q3 2027 (Jul)', mrr: '$662K', arr: '$7.95M', gm: '73.1%', cogs: '26.9%', noi: 1030000, isBreakeven: false },
+    { quarter: 'Q4 2027 (Oct)', mrr: '$881K', arr: '$10.57M', gm: '74.9%', cogs: '25.1%', noi: 1460000, isBreakeven: false },
+    { quarter: 'Q1 2028 (Jan)', mrr: '$1.17M', arr: '$14.08M', gm: '76.7%', cogs: '23.3%', noi: 2120000, isBreakeven: false },
+    { quarter: 'Q2 2028 (Apr)', mrr: '$1.56M', arr: '$18.73M', gm: '78.5%', cogs: '21.5%', noi: 3160000, isBreakeven: false },
+    { quarter: 'Q3 2028 (Jul)', mrr: '$2.08M', arr: '$24.94M', gm: '80.2%', cogs: '19.8%', noi: 4890000, isBreakeven: false },
+    { quarter: 'Q4 2028 (Oct)', mrr: '$2.77M', arr: '$33.19M', gm: '81.4%', cogs: '18.6%', noi: 6770000, isBreakeven: false, isFinal: true },
+  ];
+
+  // Calculate cumulative values
+  let cumulativeCF = 0;
+  const dataWithCumulative = quarterlyData.map((row) => {
+    cumulativeCF += row.noi;
+    const cashBalance = includeInvestment ? investmentCapital + cumulativeCF : cumulativeCF;
+    return { ...row, cumulativeCF, cashBalance };
+  });
+
+  const formatCurrency = (value) => {
+    const absValue = Math.abs(value);
+    if (absValue >= 1000000) {
+      return `${value < 0 ? '-' : '+'}$${(absValue / 1000000).toFixed(2)}M`;
+    }
+    return `${value < 0 ? '-' : '+'}$${(absValue / 1000).toFixed(0)}K`;
+  };
+
+  const formatBalance = (value) => {
+    const absValue = Math.abs(value);
+    if (absValue >= 1000000) {
+      return `$${(value / 1000000).toFixed(2)}M`;
+    }
+    return `$${(value / 1000).toFixed(0)}K`;
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base">Detailed 36-Month Financial Model</CardTitle>
+            <CardDescription className="text-xs">Quarterly summary with key metrics</CardDescription>
+          </div>
+          <div className="flex items-center gap-3">
+            <Label htmlFor="investment-toggle" className="text-xs text-muted-foreground">
+              {includeInvestment ? 'With $500K Investment' : 'Operational CF Only'}
+            </Label>
+            <Switch
+              id="investment-toggle"
+              checked={includeInvestment}
+              onCheckedChange={setIncludeInvestment}
+            />
+          </div>
+        </div>
+        {includeInvestment && (
+          <div className="mt-2 text-xs text-muted-foreground bg-green-50 p-2 rounded border border-green-200">
+            <span className="font-medium text-green-700">Starting Cash Balance: $500K</span> — Cash Balance column shows ending balance after each quarter
+          </div>
+        )}
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs">Quarter</TableHead>
+              <TableHead className="text-xs text-right">Ending MRR</TableHead>
+              <TableHead className="text-xs text-right">ARR</TableHead>
+              <TableHead className="text-xs text-right">Avg GM%</TableHead>
+              <TableHead className="text-xs text-right">Avg COGS%</TableHead>
+              <TableHead className="text-xs text-right">Quarterly NOI</TableHead>
+              <TableHead className="text-xs text-right">
+                {includeInvestment ? 'Cash Balance' : 'Cumulative CF'}
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody className="text-xs">
+            {dataWithCumulative.map((row, idx) => {
+              const displayValue = includeInvestment ? row.cashBalance : row.cumulativeCF;
+              const isPositive = displayValue > 0;
+              const rowClass = row.isBreakeven ? 'bg-green-100' : row.isFinal ? 'font-semibold border-t' : idx === 0 || idx === 4 || idx === 8 ? 'border-t' : '';
+              
+              return (
+                <TableRow key={idx} className={rowClass}>
+                  <TableCell className={row.isFinal ? 'font-bold' : 'font-medium'}>
+                    {row.quarter}{row.label ? ` - ${row.label}` : ''}
+                  </TableCell>
+                  <TableCell className="text-right">{row.mrr}</TableCell>
+                  <TableCell className="text-right">{row.arr}</TableCell>
+                  <TableCell className="text-right">{row.gm}</TableCell>
+                  <TableCell className="text-right">{row.cogs}</TableCell>
+                  <TableCell className={`text-right ${row.noi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatCurrency(row.noi)}
+                  </TableCell>
+                  <TableCell className={`text-right ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                    {includeInvestment ? formatBalance(displayValue) : formatCurrency(displayValue)}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+};
+
 const App = ({ userProfile }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const [viewMode, setViewMode] = useState('dashboard'); // 'dashboard' or 'slide'
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, effectiveIsAdmin, isImpersonating, user } = useAuth();
   const { flags, refresh: refreshFlags } = useFeatureFlags();
   
   // Check for maintenance mode - show overlay if full maintenance
-  if (flags.maintenance_mode && !isAdmin) {
+  // Use effectiveIsAdmin to respect impersonation
+  if (flags.maintenance_mode && !effectiveIsAdmin) {
     return <MaintenanceOverlay />;
   }
   
@@ -1497,89 +1798,43 @@ const App = ({ userProfile }) => {
     setViewMode('slide'); // Switch to slide view when navigating
   };
   
-  // Handle layout changes (save to backend)
+  // Layout state for GridDashboard (react-grid-layout)
+  const [gridLayout, setGridLayout] = useState([]);
+  
+  // Fetch saved layout on mount
+  useEffect(() => {
+    const loadLayout = async () => {
+      try {
+        const savedLayout = await fetchRGLLayout();
+        if (savedLayout.length > 0) {
+          setGridLayout(savedLayout);
+        }
+      } catch (error) {
+        console.error('Failed to load layout:', error);
+      }
+    };
+    
+    if (isAdmin) {
+      loadLayout();
+    }
+  }, [isAdmin]);
+  
+  // Handle layout changes from GridDashboard (save to backend)
   const handleLayoutChange = async (layout) => {
     if (!isAdmin || !user) return;
     
     try {
-      await debouncedSaveLayout(layout, user.id);
-      console.log('Layout saved successfully');
+      await saveRGLLayout(layout, user.id);
+      console.log('[App] Layout saved successfully');
     } catch (error) {
-      console.error('Failed to save layout:', error);
+      console.error('[App] Failed to save layout:', error);
     }
   };
   
-  // Enable draggable cards when in edit mode (admin only)
-  useDraggableCards(editMode && isAdmin, handleLayoutChange);
-  
-  // Automatically add draggable-card class to all Card components
-  useEffect(() => {
-    // Use requestAnimationFrame to ensure DOM is updated after slide change
-    const rafId = requestAnimationFrame(() => {
-      // Try multiple selectors to find cards more reliably
-      const selectors = [
-        '.rounded-lg.border.bg-card', // Primary selector
-        '[class*="rounded-lg"][class*="border"][class*="bg-card"]', // More flexible
-        '.bg-card.rounded-lg.border', // Alternative order
-      ];
-      
-      let cards = [];
-      let matchedSelector = null;
-      for (const selector of selectors) {
-        cards = Array.from(document.querySelectorAll(selector));
-        if (cards.length > 0) {
-          matchedSelector = selector;
-          console.log(`[App] Found ${cards.length} cards using selector: ${selector}`);
-          break;
-        }
-      }
-      
-      // Filter out nested cards (cards inside other cards)
-      // Use the same selector that matched the cards to ensure correct filtering
-      if (matchedSelector && cards.length > 0) {
-        cards = cards.filter(card => {
-          // Check if card is inside another card using the same selector that found it
-          const parentCard = card.closest(matchedSelector);
-          return !parentCard || parentCard === card;
-        });
-      }
-      
-      if (cards.length === 0 && editMode) {
-        console.warn('[App] No cards found for draggable functionality. Selectors tried:', selectors);
-      }
-      
-      cards.forEach(card => {
-        if (editMode) {
-          card.classList.add('draggable-card');
-        } else {
-          card.classList.remove('draggable-card');
-        }
-      });
-      
-      if (editMode && cards.length > 0) {
-        console.log(`[App] ${cards.length} cards marked as draggable`);
-      }
-    });
-    
-    return () => {
-      cancelAnimationFrame(rafId);
-    };
-  }, [editMode, currentSlide]);
-  
+  // Reset layout to default positions
   const resetLayout = () => {
-    // Reset all card positions on current slide with smooth animation
-    const cards = document.querySelectorAll('.draggable-card');
-    cards.forEach(card => {
-      // Ensure transition is active for smooth reset
-      card.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s ease, height 0.3s ease';
-      
-      // Reset transformations
-      card.style.transform = '';
-      card.removeAttribute('data-x');
-      card.removeAttribute('data-y');
-      card.style.width = '';
-      card.style.height = '';
-    });
+    setGridLayout([]); // Clear layout to trigger default generation
+    console.log('[App] Layout reset to defaults');
   };
 
   // Keyboard navigation
@@ -2816,41 +3071,105 @@ const App = ({ userProfile }) => {
             <div className="col-span-8">
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Revenue & ARR Trajectory (36 Months)</CardTitle>
-                  <CardDescription className="text-xs">10% M/M growth from $104K MRR to $3.25M MRR (conservative scenario)</CardDescription>
+                  <CardTitle className="text-base flex items-center gap-3">
+                    Revenue & ARR Trajectory (36 Months)
+                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 text-xs">Conservative: 10% M/M</Badge>
+                  </CardTitle>
+                  <CardDescription className="text-xs flex items-center gap-2">
+                    <span>$104K → $2.77M MRR over 36 months</span>
+                    <span className="text-amber-600 font-medium">• Half of historical 19.9% CMGR</span>
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-12 gap-1">
-                      {[98, 108, 119, 131, 144, 158, 174, 192, 211, 232, 255, 281, 309, 340, 374, 411, 452, 497, 547, 602, 662, 728, 801, 881, 969, 1066, 1173, 1290, 1419, 1561, 1717, 1889, 2078, 2286, 2514, 2766].map((value, i) => (
-                        <div key={i} className="text-center">
-                          <div className="h-16 relative flex items-end">
-                            <div 
-                              className={`w-full rounded-t ${i >= 9 ? 'bg-green-600' : 'bg-primary'}`}
-                              style={{ height: `${(value / 2766) * 100}%` }}
-                            />
-                          </div>
-                          {i % 3 === 0 && (
-                            <p className="text-xs mt-1">${value}K</p>
-                          )}
+                  <div className="space-y-3">
+                    {/* Quarterly bar chart - 12 quarters over 3 years */}
+                    <div className="relative">
+                      {/* Y-axis labels */}
+                      <div className="absolute left-0 top-0 bottom-8 w-12 flex flex-col justify-between text-xs text-muted-foreground">
+                        <span>$3M</span>
+                        <span>$2M</span>
+                        <span>$1M</span>
+                        <span>$0</span>
+                      </div>
+                      {/* Chart area */}
+                      <div className="ml-14">
+                        <div className="flex items-end gap-2 h-44">
+                          {[
+                            { q: 'Q4', year: '2025', mrr: 114, arr: 1.37, breakeven: false },
+                            { q: 'Q1', year: '2026', mrr: 152, arr: 1.82, breakeven: false },
+                            { q: 'Q2', year: '2026', mrr: 202, arr: 2.42, breakeven: false },
+                            { q: 'Q3', year: '2026', mrr: 269, arr: 3.23, breakeven: true },
+                            { q: 'Q4', year: '2026', mrr: 358, arr: 4.30, breakeven: true },
+                            { q: 'Q1', year: '2027', mrr: 477, arr: 5.72, breakeven: true },
+                            { q: 'Q2', year: '2027', mrr: 635, arr: 7.62, breakeven: true },
+                            { q: 'Q3', year: '2027', mrr: 845, arr: 10.14, breakeven: true },
+                            { q: 'Q4', year: '2027', mrr: 1125, arr: 13.50, breakeven: true },
+                            { q: 'Q1', year: '2028', mrr: 1497, arr: 17.96, breakeven: true },
+                            { q: 'Q2', year: '2028', mrr: 1993, arr: 23.92, breakeven: true },
+                            { q: 'Q3', year: '2028', mrr: 2653, arr: 31.84, breakeven: true },
+                          ].map((data, i) => (
+                            <div key={i} className="flex-1 flex flex-col items-center">
+                              <div className="w-full h-44 flex items-end justify-center">
+                                <div 
+                                  className={`w-full max-w-8 rounded-t transition-all ${data.breakeven ? 'bg-green-500' : 'bg-slate-600'}`}
+                                  style={{ height: `${(data.arr / 32) * 100}%` }}
+                                  title={`${data.q} ${data.year}: $${data.mrr}K MRR / $${data.arr}M ARR`}
+                                />
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                        {/* X-axis labels */}
+                        <div className="flex gap-2 mt-2 border-t pt-2">
+                          {[
+                            { q: 'Q4', year: "'25" },
+                            { q: 'Q1', year: "'26" },
+                            { q: 'Q2', year: "'26" },
+                            { q: 'Q3', year: "'26" },
+                            { q: 'Q4', year: "'26" },
+                            { q: 'Q1', year: "'27" },
+                            { q: 'Q2', year: "'27" },
+                            { q: 'Q3', year: "'27" },
+                            { q: 'Q4', year: "'27" },
+                            { q: 'Q1', year: "'28" },
+                            { q: 'Q2', year: "'28" },
+                            { q: 'Q3', year: "'28" },
+                          ].map((data, i) => (
+                            <div key={i} className="flex-1 text-center">
+                              <p className="text-xs font-medium">{data.q}</p>
+                              <p className="text-xs text-muted-foreground">{data.year}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
+                    {/* Legend */}
+                    <div className="flex justify-center gap-6 text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded bg-slate-600" />
+                        <span>Pre-Breakeven</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded bg-green-500" />
+                        <span>Post-Breakeven (Profitable)</span>
+                      </div>
+                    </div>
+                    {/* Key metrics */}
                     <div className="grid grid-cols-3 gap-4 text-xs">
-                      <div className="text-center p-2 border rounded">
-                        <p className="text-muted-foreground">Current (Nov 2025)</p>
-                        <p className="text-lg font-semibold">$1.25M</p>
-                        <p className="text-muted-foreground">ARR</p>
+                      <div className="text-center p-3 border rounded bg-slate-50">
+                        <p className="text-muted-foreground">Start (Nov 2025)</p>
+                        <p className="text-xl font-bold">$104K</p>
+                        <p className="text-muted-foreground">MRR</p>
                       </div>
-                      <div className="text-center p-2 border rounded bg-green-50">
-                        <p className="text-muted-foreground">Breakeven (Aug 2026)</p>
-                        <p className="text-lg font-semibold text-green-700">$2.78M</p>
-                        <p className="text-muted-foreground">ARR</p>
+                      <div className="text-center p-3 border rounded bg-green-50">
+                        <p className="text-muted-foreground">Breakeven (Q3 2026)</p>
+                        <p className="text-xl font-bold text-green-700">$269K</p>
+                        <p className="text-muted-foreground">MRR</p>
                       </div>
-                      <div className="text-center p-2 border rounded bg-primary/5">
+                      <div className="text-center p-3 border rounded bg-primary/5">
                         <p className="text-muted-foreground">Month 36 (Oct 2028)</p>
-                        <p className="text-lg font-semibold text-primary">$33.2M</p>
-                        <p className="text-muted-foreground">ARR</p>
+                        <p className="text-xl font-bold text-primary">$2.77M</p>
+                        <p className="text-muted-foreground">MRR</p>
                       </div>
                     </div>
                   </div>
@@ -2859,189 +3178,49 @@ const App = ({ userProfile }) => {
             </div>
 
             <div className="col-span-4 space-y-4">
-              <Card>
+              <Card className="h-full">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Key Milestones</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <div className="p-2 bg-primary/5 rounded">
-                    <p className="text-xs font-medium">Month 10 (Aug 2026)</p>
-                    <p className="text-xs text-muted-foreground">Breakeven: $2.78M ARR</p>
+                  <div className="p-2 bg-amber-50 rounded border border-amber-200">
+                    <p className="text-xs font-medium text-amber-800">Q4 2025 (Now)</p>
+                    <p className="text-xs text-amber-700">$104K MRR → $114K MRR</p>
                   </div>
-                  <div className="p-2 bg-green-50 rounded">
-                    <p className="text-xs font-medium text-green-800">Month 16 (Feb 2027)</p>
-                    <p className="text-xs text-green-700">Cumulative Cash Flow Positive</p>
+                  <div className="p-2 bg-green-50 rounded border border-green-200">
+                    <p className="text-xs font-medium text-green-800">Q3 2026 (Month 10)</p>
+                    <p className="text-xs text-green-700">Breakeven: $269K MRR</p>
                   </div>
-                  <div className="p-2 bg-blue-50 rounded">
-                    <p className="text-xs font-medium text-blue-800">Month 24 (Oct 2027)</p>
-                    <p className="text-xs text-blue-700">$10.6M ARR, $515K/mo profit</p>
+                  <div className="p-2 bg-blue-50 rounded border border-blue-200">
+                    <p className="text-xs font-medium text-blue-800">Q4 2027 (Month 24)</p>
+                    <p className="text-xs text-blue-700">$1.1M MRR, $13.5M ARR</p>
                   </div>
-                  <div className="p-2 bg-purple-50 rounded">
-                    <p className="text-xs font-medium text-purple-800">Month 36 (Oct 2028)</p>
-                    <p className="text-xs text-purple-700">$33.2M ARR, $2.1M/mo profit</p>
+                  <div className="p-2 bg-purple-50 rounded border border-purple-200">
+                    <p className="text-xs font-medium text-purple-800">Q3 2028 (Month 36)</p>
+                    <p className="text-xs text-purple-700">$2.65M MRR, $31.8M ARR</p>
+                  </div>
+                  <Separator className="my-3" />
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Investment Target</span>
+                      <span className="font-medium">$500K</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Months to Breakeven</span>
+                      <span className="font-medium text-green-600">10 months</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">36-Mo Revenue</span>
+                      <span className="font-medium text-green-600">$28.5M</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Capital Efficiency</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span>Max Capital Needed</span>
-                    <span className="font-medium">$449K</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span>Investment</span>
-                    <span className="font-medium">$500K</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span>Safety Buffer</span>
-                    <span className="font-medium text-green-600">$51K (11%)</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between text-xs">
-                    <span>Month 36 Cumulative</span>
-                    <span className="font-medium text-green-600">+$17.4M</span>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           </div>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Detailed 36-Month Financial Model</CardTitle>
-              <CardDescription className="text-xs">Quarterly summary with key metrics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Quarter</TableHead>
-                    <TableHead className="text-xs text-right">Ending MRR</TableHead>
-                    <TableHead className="text-xs text-right">ARR</TableHead>
-                    <TableHead className="text-xs text-right">Avg GM%</TableHead>
-                    <TableHead className="text-xs text-right">Avg COGS%</TableHead>
-                    <TableHead className="text-xs text-right">Quarterly NOI</TableHead>
-                    <TableHead className="text-xs text-right">Cumulative CF</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="text-xs">
-                  <TableRow>
-                    <TableCell className="font-medium">Q1 2026 (Jan)</TableCell>
-                    <TableCell className="text-right">$119K</TableCell>
-                    <TableCell className="text-right">$1.43M</TableCell>
-                    <TableCell className="text-right">61.9%</TableCell>
-                    <TableCell className="text-right">38.1%</TableCell>
-                    <TableCell className="text-right text-red-600">-$233K</TableCell>
-                    <TableCell className="text-right text-red-600">-$233K</TableCell>
-                  </TableRow>
-                  <TableRow className="bg-green-50">
-                    <TableCell className="font-medium">Q2 2026 (Apr)</TableCell>
-                    <TableCell className="text-right">$158K</TableCell>
-                    <TableCell className="text-right">$1.90M</TableCell>
-                    <TableCell className="text-right">63.7%</TableCell>
-                    <TableCell className="text-right">36.3%</TableCell>
-                    <TableCell className="text-right text-red-600">-$159K</TableCell>
-                    <TableCell className="text-right text-red-600">-$392K</TableCell>
-                  </TableRow>
-                  <TableRow className="bg-green-100">
-                    <TableCell className="font-medium">Q3 2026 (Jul) - Breakeven</TableCell>
-                    <TableCell className="text-right">$211K</TableCell>
-                    <TableCell className="text-right">$2.53M</TableCell>
-                    <TableCell className="text-right">65.5%</TableCell>
-                    <TableCell className="text-right">34.5%</TableCell>
-                    <TableCell className="text-right text-red-600">-$57K</TableCell>
-                    <TableCell className="text-right text-red-600">-$449K</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Q4 2026 (Oct)</TableCell>
-                    <TableCell className="text-right">$281K</TableCell>
-                    <TableCell className="text-right">$3.37M</TableCell>
-                    <TableCell className="text-right">67.8%</TableCell>
-                    <TableCell className="text-right">32.2%</TableCell>
-                    <TableCell className="text-right text-green-600">+$182K</TableCell>
-                    <TableCell className="text-right text-red-600">-$367K</TableCell>
-                  </TableRow>
-                  <TableRow className="border-t">
-                    <TableCell className="font-medium">Q1 2027 (Jan)</TableCell>
-                    <TableCell className="text-right">$374K</TableCell>
-                    <TableCell className="text-right">$4.48M</TableCell>
-                    <TableCell className="text-right">69.6%</TableCell>
-                    <TableCell className="text-right">30.4%</TableCell>
-                    <TableCell className="text-right text-green-600">+$434K</TableCell>
-                    <TableCell className="text-right text-green-600">+$47K</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Q2 2027 (Apr)</TableCell>
-                    <TableCell className="text-right">$497K</TableCell>
-                    <TableCell className="text-right">$5.97M</TableCell>
-                    <TableCell className="text-right">71.4%</TableCell>
-                    <TableCell className="text-right">28.6%</TableCell>
-                    <TableCell className="text-right text-green-600">+$634K</TableCell>
-                    <TableCell className="text-right text-green-600">+$432K</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Q3 2027 (Jul)</TableCell>
-                    <TableCell className="text-right">$662K</TableCell>
-                    <TableCell className="text-right">$7.95M</TableCell>
-                    <TableCell className="text-right">73.1%</TableCell>
-                    <TableCell className="text-right">26.9%</TableCell>
-                    <TableCell className="text-right text-green-600">+$1.03M</TableCell>
-                    <TableCell className="text-right text-green-600">+$1.31M</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Q4 2027 (Oct)</TableCell>
-                    <TableCell className="text-right">$881K</TableCell>
-                    <TableCell className="text-right">$10.57M</TableCell>
-                    <TableCell className="text-right">74.9%</TableCell>
-                    <TableCell className="text-right">25.1%</TableCell>
-                    <TableCell className="text-right text-green-600">+$1.46M</TableCell>
-                    <TableCell className="text-right text-green-600">+$2.67M</TableCell>
-                  </TableRow>
-                  <TableRow className="border-t bg-primary/5">
-                    <TableCell className="font-medium">Q1 2028 (Jan)</TableCell>
-                    <TableCell className="text-right">$1.17M</TableCell>
-                    <TableCell className="text-right">$14.08M</TableCell>
-                    <TableCell className="text-right">76.7%</TableCell>
-                    <TableCell className="text-right">23.3%</TableCell>
-                    <TableCell className="text-right text-green-600">+$2.12M</TableCell>
-                    <TableCell className="text-right text-green-600">+$4.68M</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Q2 2028 (Apr)</TableCell>
-                    <TableCell className="text-right">$1.56M</TableCell>
-                    <TableCell className="text-right">$18.73M</TableCell>
-                    <TableCell className="text-right">78.5%</TableCell>
-                    <TableCell className="text-right">21.5%</TableCell>
-                    <TableCell className="text-right text-green-600">+$3.16M</TableCell>
-                    <TableCell className="text-right text-green-600">+$7.57M</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Q3 2028 (Jul)</TableCell>
-                    <TableCell className="text-right">$2.08M</TableCell>
-                    <TableCell className="text-right">$24.94M</TableCell>
-                    <TableCell className="text-right">80.2%</TableCell>
-                    <TableCell className="text-right">19.8%</TableCell>
-                    <TableCell className="text-right text-green-600">+$4.89M</TableCell>
-                    <TableCell className="text-right text-green-600">+$11.7M</TableCell>
-                  </TableRow>
-                  <TableRow className="font-semibold border-t">
-                    <TableCell className="font-bold">Q4 2028 (Oct)</TableCell>
-                    <TableCell className="text-right">$2.77M</TableCell>
-                    <TableCell className="text-right">$33.19M</TableCell>
-                    <TableCell className="text-right">81.4%</TableCell>
-                    <TableCell className="text-right">18.6%</TableCell>
-                    <TableCell className="text-right text-green-600">+$6.77M</TableCell>
-                    <TableCell className="text-right text-green-600">+$17.4M</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
+          {/* Key Metrics Summary - Above the detailed table */}
           <div className="grid grid-cols-3 gap-4">
             <Card>
               <CardHeader className="pb-3">
@@ -3118,30 +3297,33 @@ const App = ({ userProfile }) => {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Growth Metrics</CardTitle>
+            <Card className="border-amber-200">
+              <CardHeader className="pb-3 bg-amber-50/50">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  Growth Metrics
+                  <Badge variant="outline" className="text-xs bg-amber-100 text-amber-700 border-amber-300">Conservative</Badge>
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Sustained CMGR</span>
-                  <span className="font-medium">10%</span>
+                <div className="flex justify-between items-center p-2 bg-amber-50 rounded">
+                  <span className="font-medium text-amber-800">Projection CMGR</span>
+                  <span className="font-bold text-lg text-amber-700">10%</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>vs. Historical CMGR</span>
+                  <span className="font-medium">19.9%</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">MRR Multiple</span>
-                  <span className="font-medium">31x</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">ARR Multiple</span>
-                  <span className="font-medium">31x</span>
+                  <span className="text-muted-foreground">MRR Multiple (36mo)</span>
+                  <span className="font-medium">27x</span>
                 </div>
                 <Separator />
                 <div className="space-y-1">
-                  <p className="font-medium">Key Assumptions:</p>
+                  <p className="font-medium">Conservative Assumptions:</p>
                   <ul className="space-y-0.5 text-muted-foreground">
-                    <li>• 10% M/M revenue growth</li>
+                    <li>• <strong className="text-amber-700">10% M/M</strong> (half of proven 19.9%)</li>
                     <li>• COGS: 39% → 18% over 36mo</li>
-                    <li>• OpEx: Flat at $145K/month</li>
+                    <li>• OpEx: Scales with growth</li>
                     <li>• No customer churn modeled</li>
                   </ul>
                 </div>
@@ -3188,6 +3370,9 @@ const App = ({ userProfile }) => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Detailed Data Table - Below the summaries */}
+          <ThirtySixMonthTable />
         </div>
       )
     },
@@ -3379,7 +3564,7 @@ const App = ({ userProfile }) => {
     // Slide 9: Interactive Financial Model
     {
       title: "Growth-Focused Financial Model",
-      subtitle: "Interactive 12-Month Projection | Growth-Focused Model | Based on Sept 2025 Actuals",
+      subtitle: "Oct 2025 QB Baseline → Nov Estimates → 12-Month Projection (Nov 2025 - Oct 2026)",
       content: (
         <FinancialModelSlide />
       )
@@ -3427,32 +3612,39 @@ const App = ({ userProfile }) => {
   }, [displaySlides.length, currentSlide]);
 
   return (
-    <div className="min-h-screen bg-background flex pb-12">
-      {/* Sidebar Navigation */}
-      <Sidebar
-        slides={displaySlides}
-        currentSlideIndex={currentSlide}
-        onSlideClick={goToDisplaySlide}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-      />
+    <>
+      {/* Impersonation Banner - Always on top, fixed position */}
+      <ImpersonationBanner />
+      
+      <div className={cn(
+        "min-h-screen bg-background flex pb-12",
+        isImpersonating && "pt-12" // Add padding when impersonation banner is shown
+      )}>
+        {/* Sidebar Navigation */}
+        <Sidebar
+          slides={displaySlides}
+          currentSlideIndex={currentSlide}
+          onSlideClick={goToDisplaySlide}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+        />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-      {/* Maintenance/Read-only banner (admin still sees it but can proceed) */}
-      {flags.maintenance_mode && isAdmin && (
-        <MaintenanceBanner 
-          mode="maintenance" 
-          message="Maintenance mode is enabled. Only admins can access the app."
-          onRefresh={refreshFlags}
-        />
-      )}
-      {flags.read_only_mode && (
-        <MaintenanceBanner 
-          mode="readonly" 
-          message="Read-only mode is enabled. Data changes are disabled."
-        />
-      )}
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0">
+        {/* Maintenance/Read-only banner (admin still sees it but can proceed) */}
+        {flags.maintenance_mode && effectiveIsAdmin && (
+          <MaintenanceBanner 
+            mode="maintenance" 
+            message="Maintenance mode is enabled. Only admins can access the app."
+            onRefresh={refreshFlags}
+          />
+        )}
+        {flags.read_only_mode && (
+          <MaintenanceBanner 
+            mode="readonly" 
+            message="Read-only mode is enabled. Data changes are disabled."
+          />
+        )}
       
       {/* Header */}
       <div className="border-b bg-white/95 backdrop-blur-sm">
@@ -3476,8 +3668,8 @@ const App = ({ userProfile }) => {
             {/* User Profile & Logout */}
             <UserProfile userProfile={userProfile} />
             
-            {/* Admin-only: Edit Mode Toggle (controlled by feature flag) */}
-            {flags.show_admin_controls && isAdmin && viewMode === 'slide' && (
+            {/* Admin-only: Edit Mode Toggle (controlled by feature flag, hidden when impersonating) */}
+            {flags.show_admin_controls && effectiveIsAdmin && (
               <>
                 <Button
                   variant={editMode ? "default" : "outline"}
@@ -3530,6 +3722,8 @@ const App = ({ userProfile }) => {
             slides={displaySlides}
             onSlideClick={goToDisplaySlide}
             currentSlideIndex={currentSlide}
+            editMode={editMode && isAdmin}
+            onLayoutChange={handleLayoutChange}
           />
         </div>
       ) : (
@@ -3647,7 +3841,8 @@ const App = ({ userProfile }) => {
       <Footer />
       </div>
       {/* End Main Content Area wrapper */}
-    </div>
+      </div>
+    </>
   );
 };
 
