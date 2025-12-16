@@ -5,8 +5,6 @@ import { render, screen, waitFor } from '@testing-library/react';
 const mockGetSession = vi.fn();
 const mockOnAuthStateChange = vi.fn();
 const mockSignOut = vi.fn();
-const mockGetUserRole = vi.fn();
-const mockIsAdmin = vi.fn();
 
 // Mock modules
 vi.mock('@/lib/supabaseClient', () => ({
@@ -19,9 +17,24 @@ vi.mock('@/lib/supabaseClient', () => ({
   },
 }));
 
+// Mock @/lib/supabase (used by auditService)
 vi.mock('@/lib/supabase', () => ({
-  get getUserRole() { return mockGetUserRole; },
-  get isAdmin() { return mockIsAdmin; },
+  supabase: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+    },
+  },
+  getUserRole: vi.fn().mockResolvedValue(null),
+  isAdmin: vi.fn().mockResolvedValue(false),
+}));
+
+// Mock auditService to prevent side effects
+vi.mock('@/services/auditService', () => ({
+  logAction: vi.fn(),
+  ACTION_TYPES: {
+    IMPERSONATION_START: 'IMPERSONATION_START',
+    IMPERSONATION_END: 'IMPERSONATION_END',
+  },
 }));
 
 // Import after mocks are set up
@@ -45,19 +58,21 @@ function TestComponent() {
 describe('AuthContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Set default mock implementations
-    mockGetUserRole.mockResolvedValue('user');
-    mockIsAdmin.mockResolvedValue(false);
     mockOnAuthStateChange.mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn() } },
     });
   });
 
   it('should provide auth context to children', async () => {
+    // AuthContext now reads role from user_metadata
     mockGetSession.mockResolvedValueOnce({
       data: {
         session: {
-          user: { id: 'user-123', email: 'test@example.com' },
+          user: { 
+            id: 'user-123', 
+            email: 'test@example.com',
+            user_metadata: { role: 'user' },
+          },
         },
       },
     });
@@ -110,13 +125,15 @@ describe('AuthContext', () => {
   });
 
   it('should identify admin users', async () => {
-    mockIsAdmin.mockResolvedValueOnce(true);
-    mockGetUserRole.mockResolvedValueOnce('admin');
-
+    // AuthContext now reads role from user_metadata and checks for 'admin' or 'super_admin'
     mockGetSession.mockResolvedValueOnce({
       data: {
         session: {
-          user: { id: 'admin-123', email: 'admin@example.com' },
+          user: { 
+            id: 'admin-123', 
+            email: 'admin@example.com',
+            user_metadata: { role: 'admin' },
+          },
         },
       },
     });
